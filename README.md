@@ -1,6 +1,10 @@
 [TOC]
 
+# 用Babel解析AST去除控制流平坦化（含IDEA配置eslint踩坑记录）
+
 ### 依赖
+
+- Windows10、IDEA
 
 ```bash
 yarn add shelljs -D
@@ -49,7 +53,7 @@ this.cliEngine = require(this.basicPath + "lib/cli-engine").CLIEngine;
 
 ### 动态指定执行命令：用npm scripts+nodejs脚本解决
 
-希望实现：输入命令`npm run cff <fname>`，自动执行`tsc && node <fname>.js`。
+希望实现：在项目根目录输入命令`npm run cff <fname>`，自动执行`tsc && node src/<fname>.js`。
 
 这方面资料少得可怜，参考链接1已经是能找到的里面最好的了。
 
@@ -82,7 +86,7 @@ yarn add shelljs -D
 npm run cff check_pass_demo
 ```
 
-`check_pass_demo`最简单的代码：
+给一个`src/check_pass_demo.ts`最简单的代码：
 
 ```ts
 import fs from 'fs';
@@ -95,8 +99,88 @@ const jsCode = getFile('src/inputs/check_pass_demo.js'); // 运行者不是自�
 console.log(jsCode.substring(0, 60));
 ```
 
+### 先来解析一个简单的demo
+
+这个demo来自参考链接4。待解析文件`src/inputs/hw.js`：
+
+```js
+var arr = '3,0,1,2,4'.split(',');
+var x = 0;
+var cnt = 0;
+while (true) {
+  switch (arr[cnt++]) {
+    case '0':
+      console.log('case 0');
+      x += 5;
+      continue;
+    case '1':
+      console.log('case 1');
+      x += 4;
+      continue;
+    case '2':
+      console.log('case 2');
+      x += 3;
+      continue;
+    case '3':
+      console.log('case 3');
+      x += 2;
+      continue;
+    case '4':
+      console.log('case 4');
+      x += 1;
+      continue;
+
+  }
+  break;
+}
+```
+
+#### 思路
+
+1. 获取`arr`运行时的值（是个定值）。
+2. 用Babel读取每一个`case`的body，具体取哪个`case`用`arr`确定。这里的body是`Statement[]`。
+3. 把上面的所有body拼接起来，得所求，类型仍为`Statement[]`。调用`path.replaceInline(Statement[])`来获取去除控制流平坦化的代码。
+
+`src/hw.ts`的大多数代码都只是做第一步，因为考虑到源代码可能会变。也可以选择直接硬编码第一步的结果。因此代码的骨架如下：
+
+```ts
+const jsCode = getFile('src/inputs/hw.js');
+const ast = parser.parse(jsCode);
+const decodeWhileOpts = {
+  WhileStatement (path: NodePath<WhileStatement>) {
+    const { body } = path.node;
+    const swithchNode = (body as BlockStatement).body[0];
+    if (!isSwitchStatement(swithchNode)) return;
+    const { discriminant, cases } = swithchNode;
+    // 省略第一步的代码...
+    const replaceBody = arrVal.reduce((replaceBody, index) => {
+      const caseBody = cases[+index].consequent;
+      if (isContinueStatement(caseBody[caseBody.length - 1])) {
+        caseBody.pop();
+      }
+      return replaceBody.concat(caseBody);
+    }, [] as Statement[]);
+    path.replaceInline(replaceBody);
+  }
+};
+traverse(ast, decodeWhileOpts);
+const { code } = generator(ast);
+writeOutputToFile('hw_out.js', code);
+```
+
+这里偷懒了一下，直接用`cases[+index]`来取具体的`case`了，实际上很可能要获取`cases[index].test.value`。
+
+完整代码看`src/hw.ts`即可。注意：
+
+1. 我们在项目根目录用`npm run cff hw`来运行`src/hw.ts`，所以读写文件要相对于项目根目录。
+
+#### 写这类代码的套路
+
+我们需要不停地观看https://astexplorer.net/给出的AST，来调整代码。另外，这里使用TS看上去是自讨苦吃，实际上写类型守卫的过程是在倒逼自己去思考各种边界情况。
+
 ### 参考资料
 
 1. npm package.json scripts 传递参数的解决方案：https://juejin.cn/post/7032919800662016031
 2. node执行shell命令：https://www.jianshu.com/p/c0d31513953a
 3. IDEA配置eslint：https://blog.csdn.net/weixin_33850015/article/details/91369049
+4. 利用AST对抗js混淆(三) 控制流平坦化(Control Flow Flattening)的处理：https://blog.csdn.net/lacoucou/article/details/113665767
