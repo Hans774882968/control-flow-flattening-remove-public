@@ -55,7 +55,7 @@ this.cliEngine = require(this.basicPath + "lib/cli-engine").CLIEngine;
 
 根据参考链接1，尝试过在`package.json`里加`fname`属性，然后读取`%npm_package_fname%`，但发现读不到值，因为必须放到`package.json`的`config`属性里；也尝试过在`package.json`的`config`对象里加自定义属性`fname`，这次`%npm_package_fname%`能读到值但无法修改。于是我们只能用nodejs写个脚本，然后用npm scripts包装一下了。
 
-`cff.js`：
+放在项目根目录下的`cff.js`：
 
 ```js
 const process = require('process');
@@ -76,7 +76,24 @@ shell.exec(`tsc && node src/${fname}.js`);
 yarn add shelljs -D
 ```
 
+运行举例：
 
+```bash
+npm run cff check_pass_demo
+```
+
+`check_pass_demo`最简单的代码：
+
+```ts
+import fs from 'fs';
+
+function getFile (path: string) {
+  return fs.readFileSync(path, 'utf-8');
+}
+
+const jsCode = getFile('src/inputs/check_pass_demo.js'); // 运行者不是自己，所以要相对于项目根目录
+console.log(jsCode.substring(0, 60));
+```
 
 ### 参考资料
 
