@@ -26,22 +26,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const parser = __importStar(require("@babel/parser"));
 const traverse_1 = __importDefault(require("@babel/traverse"));
 const types_1 = require("@babel/types");
 const generator_1 = __importDefault(require("@babel/generator"));
-function getFile(path) {
-    return fs_1.default.readFileSync(path, 'utf-8');
-}
-function writeOutputToFile(outFileName, code) {
-    const outputDir = path_1.default.resolve('src', 'outputs');
-    fs_1.default.mkdirSync(outputDir, { recursive: true });
-    const outputPath = path_1.default.resolve(outputDir, outFileName);
-    fs_1.default.writeFileSync(outputPath, code, 'utf-8');
-}
-const jsCode = getFile('src/inputs/hw.js');
+const file_utils_1 = require("./file_utils");
+const jsCode = (0, file_utils_1.getFile)('src/inputs/hw.js');
 const ast = parser.parse(jsCode);
 const decodeWhileOpts = {
     WhileStatement(path) {
@@ -87,4 +77,4 @@ const decodeWhileOpts = {
 };
 (0, traverse_1.default)(ast, decodeWhileOpts);
 const { code } = (0, generator_1.default)(ast);
-writeOutputToFile('hw_out.js', code);
+(0, file_utils_1.writeOutputToFile)('hw_out.js', code);

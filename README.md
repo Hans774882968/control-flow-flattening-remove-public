@@ -176,7 +176,107 @@ writeOutputToFile('hw_out.js', code);
 
 #### 写这类代码的套路
 
-我们需要不停地观看https://astexplorer.net/给出的AST，来调整代码。另外，这里使用TS看上去是自讨苦吃，实际上写类型守卫的过程是在倒逼自己去思考各种边界情况。
+我们需要不停地观看 https://astexplorer.net/ 给出的AST，来调整代码。另外，这里使用TS看上去是自讨苦吃，实际上写类型守卫的过程是在倒逼自己去思考各种边界情况。
+
+### Babel还原不直观的编码字符串或数值
+
+参考链接6。`translate_literal.ts`：
+
+```ts
+import traverse from '@babel/traverse';
+import { stringLiteral, Node } from '@babel/types';
+
+export function translateLiteral (ast: Node) {
+  traverse(ast, {
+    NumericLiteral (path) {
+      const node = path.node;
+      // 直接去除node.extra即可
+      if (node.extra && /^0[obx]/i.test(node.extra.raw as string)) {
+        node.extra = undefined;
+      }
+    },
+    StringLiteral (path) {
+      const node = path.node;
+      if (node.extra && /\\[ux]/gi.test(node.extra.raw as string)) {
+        let nodeValue = '';
+        try {
+          nodeValue = decodeURIComponent(escape(node.value));
+        } catch (error) {
+          nodeValue = node.value;
+        }
+        path.replaceWith(stringLiteral(nodeValue));
+        path.node.extra = {
+          'raw': JSON.stringify(nodeValue),
+          'rawValue': nodeValue
+        };
+      }
+    }
+  });
+}
+
+// 调用：translateLiteral(ast);
+```
+
+### Babel实现变量重命名
+
+注意：对于全局变量与局部变量同名的情况，这段代码可能是有问题的。
+
+```ts
+import traverse, { NodePath } from '@babel/traverse';
+import { Identifier, Node } from '@babel/types';
+
+// 对于全局变量与局部变量同名的情况，这段代码可能是有问题的
+export function renameVars (
+  ast: Node,
+  canReplace: (name: string) => boolean = () => {return true;},
+  renameMap: {[key: string]: string} = {}
+) {
+  const names = new Set<string>();
+  traverse(ast, {
+    Identifier (path: NodePath<Identifier>) {
+      const oldName = path.node.name;
+      if (!canReplace(oldName)) return;
+      names.add(oldName);
+    }
+  });
+  let i = 0;
+  names.forEach((name) => {
+    if (!Object.getOwnPropertyDescriptor(renameMap, name)) {
+      renameMap[name] = `v${++i}`;
+    }
+  });
+  traverse(ast, {
+    Identifier (path: NodePath<Identifier>) {
+      const oldName = path.node.name;
+      if (!canReplace(oldName)) return;
+      path.node.name = renameMap[oldName];
+    }
+  });
+}
+```
+
+### Babel MemberExpression Array Notation转Dot Notation
+
+```ts
+import traverse, { NodePath } from '@babel/traverse';
+import { identifier, Node, MemberExpression } from '@babel/types';
+
+// console['log']() 变 console.log()
+// computed 属性如果为 false，是表示 . 来引用成员
+// computed 属性为 true，则是 [] 来引用成员
+export function memberExpComputedToFalse (ast: Node) {
+  traverse(ast, {
+    MemberExpression (path: NodePath<MemberExpression>) {
+      // path.get('property')获取到的是一个NodePath类型
+      const propertyPath = path.get('property');
+      if (!propertyPath.isStringLiteral()) return;
+      const val = propertyPath.node.value;
+      path.node.computed = false;
+      propertyPath.replaceWith(identifier(val));
+    }
+  });
+}
+```
 
 ### 参考资料
 
@@ -184,3 +284,4 @@ writeOutputToFile('hw_out.js', code);
 2. node执行shell命令：https://www.jianshu.com/p/c0d31513953a
 3. IDEA配置eslint：https://blog.csdn.net/weixin_33850015/article/details/91369049
 4. 利用AST对抗js混淆(三) 控制流平坦化(Control Flow Flattening)的处理：https://blog.csdn.net/lacoucou/article/details/113665767
+5. Babel AST节点介绍：https://www.jianshu.com/p/4f27f4aa576f

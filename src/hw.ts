@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import * as parser from '@babel/parser';
 import traverse, { NodePath } from '@babel/traverse';
 import {
@@ -9,17 +7,7 @@ import {
   isCallExpression, isStringLiteral
 } from '@babel/types';
 import generator from '@babel/generator';
-
-function getFile (path: string) {
-  return fs.readFileSync(path, 'utf-8');
-}
-
-function writeOutputToFile (outFileName: string, code: string) {
-  const outputDir = path.resolve('src', 'outputs');
-  fs.mkdirSync(outputDir, { recursive: true });
-  const outputPath = path.resolve(outputDir, outFileName);
-  fs.writeFileSync(outputPath, code, 'utf-8');
-}
+import { getFile, writeOutputToFile } from './file_utils';
 
 const jsCode = getFile('src/inputs/hw.js');
 const ast = parser.parse(jsCode);
