@@ -1,6 +1,6 @@
 [TOC]
 
-# 用Babel解析AST去除控制流平坦化（含IDEA配置eslint踩坑记录）
+# 用Babel解析AST处理OB混淆代码：去除控制流平坦化、处理常量串隐藏……
 
 ### 依赖
 
@@ -12,7 +12,20 @@ yarn add shelljs -D
 yarn
 ```
 
-### IDEA配置eslint
+本文所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
+
+### 技术选型
+
+1. shelljs
+2. Babel
+3. TypeScript
+
+#### 为什么要用TypeScript
+
+1. Babel的官方文档语焉不详，TypeScript的类型提示结合IDE是更好的文档。
+2. 写类型守卫的过程是在倒逼自己去思考各种边界情况。
+
+### IDEA配置eslint踩坑记录
 
 每次配置eslint，eslint都有新的方式来折磨我，我愿称之为yyds。
 
@@ -99,7 +112,7 @@ const jsCode = getFile('src/inputs/check_pass_demo.js'); // 运行者不是自�
 console.log(jsCode.substring(0, 60));
 ```
 
-### 先来解析一个简单的demo
+### 先来解析一个简单的demo：去除基于switch语句的控制流平坦化
 
 这个demo来自参考链接4。待解析文件`src/inputs/hw.js`：
 
@@ -141,7 +154,7 @@ while (true) {
 2. 用Babel读取每一个`case`的body，具体取哪个`case`用`arr`确定。这里的body是`Statement[]`。
 3. 把上面的所有body拼接起来，得所求，类型仍为`Statement[]`。调用`path.replaceInline(Statement[])`来获取去除控制流平坦化的代码。
 
-`src/hw.ts`的大多数代码都只是做第一步，因为考虑到源代码可能会变。也可以选择直接硬编码第一步的结果。因此代码的骨架如下：
+`src/hw.ts`的大多数代码都只是做第一步，因为考虑到源代码可能会变。为了方便，也可以选择直接硬编码第一步的结果。因此代码的骨架如下：
 
 ```ts
 const jsCode = getFile('src/inputs/hw.js');
@@ -168,7 +181,7 @@ const { code } = generator(ast);
 writeOutputToFile('hw_out.js', code);
 ```
 
-这里偷懒了一下，直接用`cases[+index]`来取具体的`case`了，实际上很可能要获取`cases[index].test.value`。
+这里偷懒了一下，直接用`cases[+index]`来取具体的`case`了，实际情况很可能要写额外的代码获取`cases[index].test.value`。
 
 完整代码看`src/hw.ts`即可。注意：
 
@@ -219,7 +232,12 @@ export function translateLiteral (ast: Node) {
 
 ### Babel实现变量重命名
 
-注意：对于全局变量与局部变量同名的情况，这段代码可能是有问题的。
+- 为了提供最大的灵活性，我们设计了一个`canReplace`函数，让调用者自己决定哪些变量是参与替换的。
+- 我们设计了一个`renameMap`，允许调用者给出期望的变量重命名方案。
+
+我们默认的变量重命名方案，是先遍历一次AST，收集所有变量，给出新名字（形如`v1, v2, ...`），再遍历一次AST进行替换。
+
+注意：对于全局变量与局部变量存在同名的情况，这段代码可能是有问题的。
 
 ```ts
 import traverse, { NodePath } from '@babel/traverse';
@@ -414,11 +432,16 @@ test();
 
 #### 算法时间复杂度优化
 
-参考链接4先遍历了控制流平坦化的哈希表的每一个键值对，然后对每个键值对都完整遍历一遍树。这个时间复杂度不太好。我们可以进行预处理（相关的数据结构`cffTables`，类型为`{[key: string]: {[key: string]: Node}}`），然后通过`cffTables[tableName][keyName]`来访问所需的`Node`。具体见`src/check_pass_demo.ts`。这样我们就只需要遍历树两次了。
+参考链接4先遍历了控制流平坦化的哈希表的每一个键值对，然后对每个键值对都完整遍历一遍树。这个时间复杂度不太好。我们可以进行预处理（相关的数据结构`cffTables`，类型为`{[key: string]: {[key: string]: Node}}`），然后通过`cffTables[tableName][keyName]`来访问所需的`Node`。具体见`src/check_pass_demo_easy.ts`。这样我们就只需要遍历树两次了。
 
 #### 代码
 
-完整代码见`src/check_pass_demo.ts`：
+由于水平有限（鶸），这段代码：
+
+- 不能识别作用域。如果存在多个层的作用域的变量同名，则无法正确去掉控制流平坦化。
+- 控制流平坦化的哈希表的方括号只能识别常量串。需要先去除常量串隐藏，再调用该函数。
+
+完整代码见`src/check_pass_demo_easy.ts`：
 
 ```ts
 function cff (ast: Node) {
@@ -565,6 +588,340 @@ function test () {
   } else {
     alert('error!');
   }
+}
+test();
+```
+
+### 【全网首发】处理javascript-obfuscator（OB）的Strings Transformations（常量串隐藏）
+
+[这个网站](https://obfuscator.io/)就是[开源项目](https://github.com/javascript-obfuscator/javascript-obfuscator) `javascript-obfuscator`的Web UI。它提供了一个Strings Transformations用于隐藏常量串。我们勾选`String Array, String Array Rotate, String Array Shuffle`这3个选项，观察一下生成的代码的特征：
+
+```js
+(function(_0x1f23fa, _0x502274) {
+	var _0x1841e6 = _0x546b,
+		_0x54332a = _0x1f23fa();
+	while ([]) {
+		try {
+			var _0x37b83c = -parseInt(_0x1841e6(0x72)) / 0x1 + parseInt(_0x1841e6(0x73)) / 0x2 * (-parseInt(_0x1841e6(0x7c)) / 0x3) + parseInt(_0x1841e6(0x88)) / 0x4 * (parseInt(_0x1841e6(0x89)) / 0x5) + -parseInt(_0x1841e6(0x71)) / 0x6 + parseInt(_0x1841e6(0x6c)) / 0x7 * (-parseInt(_0x1841e6(0x85)) / 0x8) + -parseInt(_0x1841e6(0x82)) / 0x9 + -parseInt(_0x1841e6(0x7e)) / 0xa * (-parseInt(_0x1841e6(0x78)) / 0xb);
+			if (_0x37b83c === _0x502274) break;
+			else _0x54332a['push'](_0x54332a['shift']());
+		} catch (_0x258ebb) {
+			_0x54332a['push'](_0x54332a['shift']());
+		}
+	}
+}(_0x3ddf, 0x20d95));
+
+function _0x546b(_0x280dd3, _0x383a2d) {
+	var _0x3ddf54 = _0x3ddf();
+	return _0x546b = function(_0x546b3f, _0x142ae2) {
+		_0x546b3f = _0x546b3f - 0x6c;
+		var _0x233a8a = _0x3ddf54[_0x546b3f];
+		return _0x233a8a;
+	}, _0x546b(_0x280dd3, _0x383a2d);
+}
+
+function _0x3ddf() {
+	var _0x45c37a = ['30037Sxrenc', 'error!', 'len\x20error', 'XmvLm', 'Orz..', '1159374JpqDju', '267734qPEpMO', '364750QkecUn', 'shrai', 'length', 'KUTlo', 'Vwtjq', '99juDGtv', 'FhQZn', 'charCodeAt', 'FdUfK', '3tSVDal', 'Ajnur', '874980MJshmD', 'KclRu', 'Fhqhk', 'charAt', '187074oiwMPp', 'PjAeQ', 'ewhZd', '328PNtXbI', 'congratulation!', 'DpUmp', '57576xxZPaZ', '65fmhmYN', 'ualDk', 'RHSOY', 'log'];
+	_0x3ddf = function() {
+		return _0x45c37a;
+	};
+	return _0x3ddf();
+}
+```
+
+可得：
+
+- 这几个函数会随机换位置，干扰你的寻找。
+- 有常量串数组的函数，利用闭包来给出常量串数组，记为`sl`。
+- `_0x546b`函数仅仅是`(idx) => sl[idx - 0x6c]`。
+- 自执行函数可以进行常量串数组的`shuffle`和`rotate`。
+
+再看常量串的获取方式：`_0x583af1(0x74)`。因此我们的目标就是把这种函数调用变为常量串。
+
+值得注意的是，每个函数开头都有`var _0x583af1 = _0x546b`这样的定义，因此我们需要识别实际上等于`_0x546b`的变量。相关代码：
+
+```ts
+  const stringLiteralFuncs = ['_0x546b'];
+  // 收集与常量串隐藏有关的变量
+  traverse(ast, {
+    VariableDeclarator (path) {
+      const vaNode = path.node;
+      if (!isIdentifier(vaNode.init) || !isIdentifier(vaNode.id)) return;
+      if (stringLiteralFuncs.includes(vaNode.init.name)) {
+        stringLiteralFuncs.push(vaNode.id.name);
+      }
+    }
+  });
+```
+
+接下来需要拿到最终的常量串数组。暂时没找到优雅的方式，只能先用一个妥协方案：
+
+1. 因为常量串数组的最终形态是固定的，所以我们首先直接运行一下上面那段代码，拿到常量串数组的最终形态，然后把它硬编码进代码里。
+2. 获取常量串的函数自行实现，即硬编码进代码里。
+
+相关代码：
+
+```ts
+restoreStringLiteral(ast, (idx: number) => {
+  return ['30037Sxrenc', 'error!', 'len\x20error', 'XmvLm', 'Orz..', '1159374JpqDju', '267734qPEpMO', '364750QkecUn', 'shrai', 'length', 'KUTlo', 'Vwtjq', '99juDGtv', 'FhQZn', 'charCodeAt', 'FdUfK', '3tSVDal', 'Ajnur', '874980MJshmD', 'KclRu', 'Fhqhk', 'charAt', '187074oiwMPp', 'PjAeQ', 'ewhZd', '328PNtXbI', 'congratulation!', 'DpUmp', '57576xxZPaZ', '65fmhmYN', 'ualDk', 'RHSOY', 'log'][idx - 108];
+});
+// 调用：getStringArr(idx)
+```
+
+完整的相关代码：
+
+```ts
+function restoreStringLiteral (ast: Node, getStringArr: (idx: number) => string) {
+  // 如果常量表不止1处，则此代码不正确
+  const stringLiteralFuncs = ['_0x546b'];
+  // 收集与常量串隐藏有关的变量
+  traverse(ast, {
+    VariableDeclarator (path) {
+      const vaNode = path.node;
+      if (!isIdentifier(vaNode.init) || !isIdentifier(vaNode.id)) return;
+      if (stringLiteralFuncs.includes(vaNode.init.name)) {
+        stringLiteralFuncs.push(vaNode.id.name);
+      }
+    }
+  });
+  traverse(ast, {
+    CallExpression (path) {
+      const cNode = path.node;
+      if (!isIdentifier(cNode.callee)) return;
+      const varName = cNode.callee.name;
+      if (!stringLiteralFuncs.includes(varName)) return;
+      if (cNode.arguments.length !== 1 || !isNumericLiteral(cNode.arguments[0])) return;
+      const idx = cNode.arguments[0].value;
+      path.replaceWith(stringLiteral(getStringArr(idx)));
+    }
+  });
+}
+restoreStringLiteral(ast, (idx: number) => {
+  return ['30037Sxrenc', 'error!', 'len\x20error', 'XmvLm', 'Orz..', '1159374JpqDju', '267734qPEpMO', '364750QkecUn', 'shrai', 'length', 'KUTlo', 'Vwtjq', '99juDGtv', 'FhQZn', 'charCodeAt', 'FdUfK', '3tSVDal', 'Ajnur', '874980MJshmD', 'KclRu', 'Fhqhk', 'charAt', '187074oiwMPp', 'PjAeQ', 'ewhZd', '328PNtXbI', 'congratulation!', 'DpUmp', '57576xxZPaZ', '65fmhmYN', 'ualDk', 'RHSOY', 'log'][idx - 108];
+});
+```
+
+### 用AST处理混淆代码的流程总结
+
+1. 恢复被隐藏的常量串
+2. 识别无用代码并删除（本文没涉及）
+3. 去除控制流平坦化
+4. 清理常量串隐藏和控制流平坦化带来的无用变量
+5. MemberExpression Array Notation转Dot Notation
+6. 重命名变量
+7. 还原不直观的编码字符串或数值
+8. ……
+
+把上面的例子串联起来，我们可以写出
+
+`src/inputs/check_pass_demo.js`（添加Strings Transformations的`String Array, String Array Rotate, String Array Shuffle`、控制流平坦化）：
+
+```js
+(function (_0x1f23fa, _0x502274) {var _0x1841e6 = _0x546b, _0x54332a = _0x1f23fa();while ([]) {try {var _0x37b83c = -parseInt(_0x1841e6(0x72)) / 0x1 + parseInt(_0x1841e6(0x73)) / 0x2 * (-parseInt(_0x1841e6(0x7c)) / 0x3) + parseInt(_0x1841e6(0x88)) / 0x4 * (parseInt(_0x1841e6(0x89)) / 0x5) + -parseInt(_0x1841e6(0x71)) / 0x6 + parseInt(_0x1841e6(0x6c)) / 0x7 * (-parseInt(_0x1841e6(0x85)) / 0x8) + -parseInt(_0x1841e6(0x82)) / 0x9 + -parseInt(_0x1841e6(0x7e)) / 0xa * (-parseInt(_0x1841e6(0x78)) / 0xb);if (_0x37b83c === _0x502274) break;else _0x54332a['push'](_0x54332a['shift']());} catch (_0x258ebb) {_0x54332a['push'](_0x54332a['shift']());}}}(_0x3ddf, 0x20d95));function check_pass (_0xaa86db) {var _0x583e52 = _0x546b, _0xd90ee7 = { 'ZlkIH': function (_0x132a5a, _0x451a83) {return _0x132a5a == _0x451a83;}, 'ualDk': function (_0x433e80, _0x19c73c) {return _0x433e80 + _0x19c73c;}, 'PjAeQ': function (_0x46730a, _0x28299e) {return _0x46730a == _0x28299e;}, 'Vwtjq': function (_0x201e8b, _0x48c7c0) {return _0x201e8b == _0x48c7c0;}, 'nThKq': function (_0x359f03, _0x3c0e47) {return _0x359f03 > _0x3c0e47;}, 'ewhZd': function (_0x391fc4, _0x22f89a) {return _0x391fc4 < _0x22f89a;}, 'DpUmp': function (_0x233e7b, _0x51262e) {return _0x233e7b == _0x51262e;}, 'Ajnur': function (_0x49956e, _0x3c20da) {return _0x49956e == _0x3c20da;}, 'RHSOY': function (_0x43a3b0, _0x3a7f38) {return _0x43a3b0 ^ _0x3a7f38;}, 'FdUfK': _0x583e52(0x70), 'XmvLm': _0x583e52(0x6e) }, _0x39ead2 = 0x0, _0x2ce438 = 0x0;for (_0x39ead2 = 0x0;;_0x39ead2++) {if (_0xd90ee7['ZlkIH'](_0x39ead2, _0xaa86db[_0x583e52(0x75)])) break;_0x2ce438 = _0xd90ee7[_0x583e52(0x8a)](_0x2ce438, _0xaa86db[_0x583e52(0x7a)](_0x39ead2));} if (_0xd90ee7[_0x583e52(0x83)](_0x39ead2, 0x4)) {if (_0xd90ee7[_0x583e52(0x77)](_0x2ce438, 0x1a1) && _0xd90ee7['nThKq'](_0xaa86db[_0x583e52(0x81)](0x3), 'c') && _0xd90ee7[_0x583e52(0x84)](_0xaa86db[_0x583e52(0x81)](0x3), 'e') && _0xd90ee7[_0x583e52(0x87)](_0xaa86db[_0x583e52(0x81)](0x0), 'b')) {if (_0xd90ee7[_0x583e52(0x7d)](_0xd90ee7[_0x583e52(0x8b)](_0xaa86db[_0x583e52(0x7a)](0x3), 0xd), _0xaa86db[_0x583e52(0x7a)](0x1))) return 0x1;console[_0x583e52(0x8c)](_0xd90ee7[_0x583e52(0x7b)]);}} else console[_0x583e52(0x8c)](_0xd90ee7[_0x583e52(0x6f)]);return 0x0;} function test () {var _0x583af1 = _0x546b, _0x2d1e4f = { 'shrai': function (_0x442c79, _0x5d5a4e) {return _0x442c79(_0x5d5a4e);}, 'FhQZn': 'bird', 'KUTlo': function (_0x32455c, _0x4d5b8f) {return _0x32455c(_0x4d5b8f);}, 'Fhqhk': _0x583af1(0x86), 'KclRu': _0x583af1(0x6d) };_0x2d1e4f[_0x583af1(0x74)](check_pass, _0x2d1e4f[_0x583af1(0x79)]) ? _0x2d1e4f[_0x583af1(0x76)](alert, _0x2d1e4f[_0x583af1(0x80)]) : _0x2d1e4f[_0x583af1(0x76)](alert, _0x2d1e4f[_0x583af1(0x7f)]);} function _0x546b (_0x280dd3, _0x383a2d) {var _0x3ddf54 = _0x3ddf();return _0x546b = function (_0x546b3f, _0x142ae2) {_0x546b3f = _0x546b3f - 0x6c;var _0x233a8a = _0x3ddf54[_0x546b3f];return _0x233a8a;}, _0x546b(_0x280dd3, _0x383a2d);}test();function _0x3ddf () {var _0x45c37a = ['30037Sxrenc', 'error!', 'len\x20error', 'XmvLm', 'Orz..', '1159374JpqDju', '267734qPEpMO', '364750QkecUn', 'shrai', 'length', 'KUTlo', 'Vwtjq', '99juDGtv', 'FhQZn', 'charCodeAt', 'FdUfK', '3tSVDal', 'Ajnur', '874980MJshmD', 'KclRu', 'Fhqhk', 'charAt', '187074oiwMPp', 'PjAeQ', 'ewhZd', '328PNtXbI', 'congratulation!', 'DpUmp', '57576xxZPaZ', '65fmhmYN', 'ualDk', 'RHSOY', 'log'];_0x3ddf = function () {return _0x45c37a;};return _0x3ddf();}
+```
+
+的还原代码`src/check_pass_demo.ts`：
+
+```ts
+import * as parser from '@babel/parser';
+import { renameVars } from './rename_vars';
+import generator from '@babel/generator';
+import { getFile, writeOutputToFile } from './file_utils';
+import { memberExpComputedToFalse } from './member_exp_computed_to_false';
+import { translateLiteral } from './translate_literal';
+import traverse from '@babel/traverse';
+import {
+  Node,
+  isIdentifier,
+  isMemberExpression,
+  isObjectExpression,
+  isObjectProperty,
+  isStringLiteral,
+  isFunctionExpression,
+  isReturnStatement,
+  isBinaryExpression,
+  binaryExpression,
+  isLogicalExpression,
+  logicalExpression,
+  isCallExpression,
+  callExpression,
+  isExpression,
+  isNumericLiteral,
+  stringLiteral
+} from '@babel/types';
+
+const jsCode = getFile('src/inputs/check_pass_demo.js');
+const ast = parser.parse(jsCode);
+
+function restoreStringLiteral (ast: Node, getStringArr: (idx: number) => string) {
+  // 如果常量表不止1处，则此代码不正确
+  const stringLiteralFuncs = ['_0x546b'];
+  // 收集与常量串隐藏有关的变量
+  traverse(ast, {
+    VariableDeclarator (path) {
+      const vaNode = path.node;
+      if (!isIdentifier(vaNode.init) || !isIdentifier(vaNode.id)) return;
+      if (stringLiteralFuncs.includes(vaNode.init.name)) {
+        stringLiteralFuncs.push(vaNode.id.name);
+      }
+    }
+  });
+  traverse(ast, {
+    CallExpression (path) {
+      const cNode = path.node;
+      if (!isIdentifier(cNode.callee)) return;
+      const varName = cNode.callee.name;
+      if (!stringLiteralFuncs.includes(varName)) return;
+      if (cNode.arguments.length !== 1 || !isNumericLiteral(cNode.arguments[0])) return;
+      const idx = cNode.arguments[0].value;
+      path.replaceWith(stringLiteral(getStringArr(idx)));
+    }
+  });
+}
+restoreStringLiteral(ast, (idx: number) => {
+  return ['30037Sxrenc', 'error!', 'len\x20error', 'XmvLm', 'Orz..', '1159374JpqDju', '267734qPEpMO', '364750QkecUn', 'shrai', 'length', 'KUTlo', 'Vwtjq', '99juDGtv', 'FhQZn', 'charCodeAt', 'FdUfK', '3tSVDal', 'Ajnur', '874980MJshmD', 'KclRu', 'Fhqhk', 'charAt', '187074oiwMPp', 'PjAeQ', 'ewhZd', '328PNtXbI', 'congratulation!', 'DpUmp', '57576xxZPaZ', '65fmhmYN', 'ualDk', 'RHSOY', 'log'][idx - 108];
+});
+
+function cff (ast: Node) {
+  type ASTNodeMap = {[key: string]: Node}
+  const cffTables: {[key: string]: ASTNodeMap} = {};
+  traverse(ast, {
+    VariableDeclarator (path) {
+      const node = path.node;
+      if (!node.id || !isIdentifier(node.id)) return;
+      const tableName = node.id.name;
+      if (!isObjectExpression(node.init)) return;
+      const tableProperties = node.init.properties;
+      cffTables[tableName] = tableProperties.reduce((cffTable, tableProperty) => {
+        if (!isObjectProperty(tableProperty) ||
+           !isStringLiteral(tableProperty.key)) return cffTable;
+        cffTable[tableProperty.key.value] = tableProperty.value;
+        return cffTable;
+      }, {} as ASTNodeMap);
+    }
+  });
+
+  traverse(ast, {
+    CallExpression (path) {
+      const cNode = path.node;
+      if (isMemberExpression(cNode.callee)) {
+        if (!isIdentifier(cNode.callee.object)) return;
+        const callParams = cNode.arguments;
+        const tableName = cNode.callee.object.name;
+        if (!isStringLiteral(cNode.callee.property)) return;
+        const keyName = cNode.callee.property.value;
+        if (!(tableName in cffTables) ||
+            !(keyName in cffTables[tableName])) return;
+        const shouldBeFuncValue = cffTables[tableName][keyName];
+        if (!isFunctionExpression(shouldBeFuncValue) ||
+            !shouldBeFuncValue.body.body.length ||
+            !isReturnStatement(shouldBeFuncValue.body.body[0])) return;
+        // 拿到返回值
+        const callArgument = shouldBeFuncValue.body.body[0].argument;
+        if (isBinaryExpression(callArgument) && callParams.length === 2) {
+          if (!isExpression(callParams[0]) || !isExpression(callParams[1])) {
+            throw '二元运算符中，两个参数都应为表达式';
+          }
+          // 处理function(x, y){return x + y}这种形式
+          path.replaceWith(binaryExpression(callArgument.operator, callParams[0], callParams[1]));
+        } else if (isLogicalExpression(callArgument) && callParams.length === 2) {
+          if (!isExpression(callParams[0]) || !isExpression(callParams[1])) {
+            throw '逻辑运算符中，两个参数都应为表达式';
+          }
+          // 处理function(x, y){return x > y}这种形式
+          path.replaceWith(logicalExpression(callArgument.operator, callParams[0], callParams[1]));
+        } else if (isCallExpression(callArgument) && isIdentifier(callArgument.callee)) {
+          // 处理function(f, ...args){return f(...args)}这种形式
+          if (callParams.length == 1) {
+            path.replaceWith(callParams[0]);
+          } else {
+            if (!isExpression(callParams[0])) {
+              throw '仅支持第一个参数为函数的形式，如：function(f, ...args){return f(...args)}';
+            }
+            path.replaceWith(callExpression(callParams[0], callParams.slice(1)));
+          }
+        }
+      }
+    },
+    MemberExpression (path) {
+      const mNode = path.node;
+      if (!isIdentifier(mNode.object)) return;
+      const tableName = mNode.object.name;
+      if (!isStringLiteral(mNode.property)) return;
+      const keyName = mNode.property.value;
+      if (!(tableName in cffTables) ||
+          !(keyName in cffTables[tableName])) return;
+      const cffTableValue = cffTables[tableName][keyName];
+      path.replaceWith<Node>(cffTableValue);
+    }
+  });
+}
+cff(ast);
+
+function removeUselessCodes (ast: Node) {
+  traverse(ast, {
+    // 去除给string数组进行随机移位的自执行函数
+    CallExpression (path) {
+      if (!isFunctionExpression(path.node.callee)) return;
+      if (path.node.arguments.length !== 2 ||
+          !isNumericLiteral(path.node.arguments[1]) ||
+          path.node.arguments[1].value !== 0x20d95) return;
+      path.remove();
+    },
+    // 去除给string数组进行随机移位的函数
+    FunctionDeclaration (path) {
+      if (!isIdentifier(path.node.id)) return;
+      const funcName = path.node.id.name;
+      if (!['_0x546b', '_0x3ddf'].includes(funcName)) return;
+      path.remove();
+    },
+    // 去除控制流平坦化的哈希表和用于隐藏常量串的变量
+    VariableDeclarator (path) {
+      if (!isIdentifier(path.node.id)) return;
+      const varName = path.node.id.name;
+      // 前两个变量是控制流平坦化的哈希表，后两个是用于隐藏常量串的变量
+      if (!['_0xd90ee7', '_0x2d1e4f', '_0x583e52', '_0x583af1'].includes(varName)) return;
+      path.remove();
+    }
+  });
+}
+removeUselessCodes(ast);
+
+memberExpComputedToFalse(ast);
+renameVars(
+  ast,
+  (name:string) => name.substring(0, 3) === '_0x',
+  {
+    check_pass: 'check_pass', test: 'test', _0x39ead2: 'i',
+    _0x2ce438: 'sum', _0xaa86db: 'password'
+  }
+);
+translateLiteral(ast);
+
+const { code } = generator(ast);
+writeOutputToFile('check_pass_demo_out.js', code);
+```
+
+还原效果（完美！）：
+
+```js
+function check_pass (password) {
+  var i = 0,
+    sum = 0;
+  for (i = 0;; i++) {
+    if (i == password.length) break;
+    sum = sum + password.charCodeAt(i);
+  }
+  if (i == 4) {
+    if (sum == 417 && password.charAt(3) > 'c' && password.charAt(3) < 'e' && password.charAt(0) == 'b') {
+      if ((password.charCodeAt(3) ^ 13) == password.charCodeAt(1)) return 1;
+      console.log('Orz..');
+    }
+  } else console.log('len error');
+  return 0;
+}
+function test () {
+  check_pass('bird') ? alert('congratulation!') : alert('error!');
 }
 test();
 ```
