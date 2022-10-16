@@ -36,10 +36,10 @@ const ast = parser.parse(jsCode);
 const decodeWhileOpts = {
     WhileStatement(path) {
         const { body } = path.node;
-        const swithchNode = body.body[0];
-        if (!(0, types_1.isSwitchStatement)(swithchNode))
+        const switchNode = body.body[0];
+        if (!(0, types_1.isSwitchStatement)(switchNode))
             return;
-        const { discriminant, cases } = swithchNode;
+        const { discriminant, cases } = switchNode;
         // 这里的类型守卫有更优雅的写法么qwq？
         if (!(0, types_1.isMemberExpression)(discriminant) ||
             !(0, types_1.isUpdateExpression)(discriminant.property) ||

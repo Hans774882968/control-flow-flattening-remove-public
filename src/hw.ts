@@ -14,9 +14,9 @@ const ast = parser.parse(jsCode);
 const decodeWhileOpts = {
   WhileStatement (path: NodePath<WhileStatement>) {
     const { body } = path.node;
-    const swithchNode = (body as BlockStatement).body[0];
-    if (!isSwitchStatement(swithchNode)) return;
-    const { discriminant, cases } = swithchNode;
+    const switchNode = (body as BlockStatement).body[0];
+    if (!isSwitchStatement(switchNode)) return;
+    const { discriminant, cases } = switchNode;
     // 这里的类型守卫有更优雅的写法么qwq？
     if (!isMemberExpression(discriminant) ||
         !isUpdateExpression(discriminant.property) ||
