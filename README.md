@@ -14,11 +14,35 @@ yarn add shelljs -D
 yarn
 ```
 
-本文juejin：
+`package.json`指定的依赖如下：
 
-本文52pojie：
+```json
+  "devDependencies": {
+    "@babel/preset-typescript": "^7.18.6",
+    "@types/babel__core": "^7.1.19",
+    "@types/babel__traverse": "^7.18.0",
+    "@types/node": "^18.7.13",
+    "@typescript-eslint/eslint-plugin": "^5.35.1",
+    "@typescript-eslint/parser": "^5.35.1",
+    "eslint": "8.22.0",
+    "shelljs": "^0.8.5"
+  },
+  "dependencies": {
+    "@babel/core": "^7.18.13",
+    "@babel/parser": "^7.18.13",
+    "@babel/preset-env": "^7.18.10",
+    "@babel/traverse": "^7.18.13",
+    "typescript": "^4.7.4"
+  }
+```
 
-本文csdn：
+【52pojie】用Babel解析AST处理OB混淆JS代码（一）：https://www.52pojie.cn/thread-1700036-1-1.html
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（三）：
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（四）：
 
 本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
 
@@ -26,14 +50,20 @@ yarn
 
 ### 引言
 
-原本只打算用AST来去除JS代码的控制流平坦化，但发现只有先熟悉AST的相关操作，才能更好地完成这个目标。索性我把一篇blog拆成一个系列，来讲清楚所有相关知识。相信在看到这个系列以后，大家都会感慨AST真简单！
+> AST（Abstract Syntax Tree，抽象语法树），简称语法树（Syntax Tree），是源代码的抽象语法结构的树状表现形式，树上的每个节点都表示源代码中的一种结构。语法树不是某一种编程语言独有的，JavaScript、Python、Java、Golang等几乎所有编程语言都有语法树。
+
+AST 的用途很广：IDE 的语法高亮、代码检查、格式化、压缩、转译等，使用AST来处理源代码都是最方便的。又比如`ES5`和`ES6`语法有不少差异，为了向后兼容，在实际应用中需要进行转换，这个场景用AST也是最方便的。AST并不是为了逆向而生，但做逆向学会了AST，在解混淆时会更方便。
+
+原本只打算用AST来去除JS代码的控制流平坦化，但发现只有先熟悉AST的相关操作，才能更好地完成这个目标。索性我把一篇blog拆成一个系列，来讲清楚所有相关知识。相信在看到这个系列以后，大家都会感慨AST真简单！如果和我一样鶸，就把这些代码跑一遍，很快就能学会！
 
 ### 技术选型
 
-1. shelljs：在nodejs中执行cmd命令
-2. Babel：解析AST，修改AST并重新生成代码
-3. eslint：检查代码格式是否符合规范，并尝试自动format代码
+1. shelljs：在nodejs中执行cmd命令。
+2. Babel：解析AST，修改AST并重新生成代码。在 [astexplorer](https://astexplorer.net/) 中还展示了`recast`等包，它们都能做这件事。
+3. eslint：检查代码格式是否符合规范，并尝试自动format代码。
 4. TypeScript
+
+这里只有`Babel`是必须的，但为了在提升开发效率的同时保证代码的健壮，还是建议把TS、eslint配好。
 
 #### 为什么要用TypeScript
 
@@ -56,7 +86,7 @@ TypeError: this.options.parse is not a function
 
 #### eslint报cliEngine的错
 
-打开`<idea安装目录>\plugins\JavaScriptLanguage\languageService\eslint\bin\eslint-plugin.js`。
+打开`<IDEA安装目录>\plugins\JavaScriptLanguage\languageService\eslint\bin\eslint-plugin.js`。
 
 ```js
 // 旧版用
@@ -69,15 +99,15 @@ this.cliEngine = require(this.basicPath + "lib/cli-engine").CLIEngine;
 
 #### IDEA配置自动format
 
-`yarn add`之后，是根据参考链接3来配置：
+`yarn add`之后，要根据参考链接3来配置：
 
 1. `Languages & Frameworks -> JavaScript -> Code Quality Tools -> ESLint`，勾选Enable，然后填相关的字段。
 2. `设置 -> ESLint Settings`，勾选Enable，然后填`Path to eslint bin`，勾选`Auto fix errors`等字段。
 3. 打开`设置 -> Keymap`搜索`Fix ESLint Problems`，配置快捷键。
 
-看到它标红，并且能按快捷键format代码就成功了。总之能配置的都配置一下，免得它老不生效……
+看到`JS / TS`代码标红，并且能按快捷键format代码就成功了。总之能配置的都配置一下，免得它老不生效……
 
-> 呵呵呵这次IDEA叕不能显示typescript的eslint错误了，明明啥都装了……幸好还能通过`npm run lint`来format。不得不说**eslint永远得神**……
+> 后续：呵呵呵这次IDEA叕不能显示TypeScript的eslint错误了，明明啥都装了……幸好还能通过`npm run lint`来format。不得不说**eslint永远得神**……
 
 ### 动态指定执行命令：用npm scripts+nodejs脚本解决
 
@@ -85,7 +115,9 @@ this.cliEngine = require(this.basicPath + "lib/cli-engine").CLIEngine;
 
 这方面资料少得可怜，参考链接1已经是能找到的里面最好的了。
 
-根据参考链接1，尝试过在`package.json`里加`fname`属性，然后读取`%npm_package_fname%`，但发现读不到值，因为必须放到`package.json`的`config`属性里；也尝试过在`package.json`的`config`对象里加自定义属性`fname`，这次`%npm_package_fname%`能读到值但无法修改。于是我们只能用nodejs写个脚本，然后用npm scripts包装一下了。
+根据参考链接1，尝试过在`package.json`里加`fname`属性，然后读取`%npm_package_fname%`，但发现读不到值，因为必须放到`package.json`的`config`属性里；也尝试过在`package.json`的`config`对象里加自定义属性`fname`，这次`%npm_package_fname%`能读到值但无法修改。于是我们只能用最麻烦但最灵活的方案了：
+
+用nodejs写个脚本，然后用npm scripts包装一下。
 
 放在项目根目录下的`cff.js`：
 
@@ -108,13 +140,7 @@ shell.exec(`tsc && node src/${fname}.js`);
 yarn add shelljs -D
 ```
 
-运行举例：
-
-```bash
-npm run cff check_pass_demo
-```
-
-给一个`src/check_pass_demo.ts`最简单的代码：
+给一个demo（`src/check_pass_demo.ts`）最简单的代码：
 
 ```ts
 import fs from 'fs';
@@ -125,6 +151,12 @@ function getFile (path: string) {
 
 const jsCode = getFile('src/inputs/check_pass_demo.js'); // 运行者不是自己，所以要相对于项目根目录
 console.log(jsCode.substring(0, 60));
+```
+
+运行命令：
+
+```bash
+npm run cff check_pass_demo
 ```
 
 ### 参考资料
@@ -139,18 +171,138 @@ console.log(jsCode.substring(0, 60));
 
 ## 用Babel解析AST处理OB混淆JS代码（二）：一些通用的基本操作
 
-### 写这类代码的套路
+### 引言
 
-我们需要不停地观看 https://astexplorer.net/ 给出的AST，来调整代码。另外，再强调一次为什么要用TS：
+在开始用AST来进行JS代码的修改之前，我们先通过一些例子看AST的形态。在 [astexplorer](https://astexplorer.net/) 中选择编译器`@babel/parser`，输入一行代码：`obj['x'](1)`。
+
+```json
+ExpressionStatement  {
+  type: "ExpressionStatement"
+  start: 0
+  end: 11
+  loc: {start, end, filename, identifierName}
+  expression: CallExpression  {
+    type: "CallExpression"
+    start: 0
+    end: 11
+    loc: {start, end, filename, identifierName}
+    callee: MemberExpression  {
+      type: "MemberExpression"
+      start: 0
+      end: 8
+      loc: {start, end, filename, identifierName}
+      object: Identifier  = $node {
+        type: "Identifier"
+        start: 0
+        end: 3
+        loc: {start, end, filename, identifierName}
+        name: "obj"
+      }
+      computed: true
+      property: StringLiteral  {
+        type: "StringLiteral"
+        start: 4
+        end: 7
+        loc: {start, end, filename, identifierName}
+        extra: {rawValue, raw}
+        value: "x"
+      }
+    }
+    arguments:  [
+      NumericLiteral  {
+        type: "NumericLiteral"
+        start: 9
+        end: 10
+        loc: {start, end, filename, identifierName}
+        extra: {rawValue, raw}
+        value: 1
+      }
+    ]
+  }
+}
+```
+
+归纳出一些特征：
+
+1. 因为对象是先取属性，再进行调用，所以AST是`CallExpression`在`MemberExpression`的上面。
+2. `obj`变量名对应`Identifier`，常量串对应`StringLiteral`，数字对应`NumericLiteral`。
+3. `CallExpression`主要关注`callee`和`arguments`属性，分别表示被调用的函数和参数列表。
+4. `MemberExpression`主要关注`object`、`property`和`computed`属性，分别表示对象，属性和是否是计算属性。`Dot Notation`和`Array Notation`的`computed`分别为`false`和`true`。
+
+我们需要不断地看AST，归纳出特征，才能写出正确的代码。
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（一）：https://www.52pojie.cn/thread-1700036-1-1.html
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（三）：
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（四）：
+
+本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
+
+**作者：[hans774882968](https://blog.csdn.net/hans774882968)以及[hans774882968](https://juejin.cn/user/1464964842528888)以及[hans774882968](https://www.52pojie.cn/home.php?mod=space&uid=1906177)**
+
+### 写AST处理代码的套路
+
+接下来看看AST处理代码的骨架：
+
+```ts
+import generator from '@babel/generator';
+import traverse from '@babel/traverse';
+import {
+  Node,
+  isIdentifier,
+  isMemberExpression,
+  // ...
+} from '@babel/types';
+
+const ast = parser.parse(jsCode);
+traverse(ast, {
+  // 在递归遍历子树之前，对是Identifier的节点进行修改
+  Identifier (path: NodePath<Identifier>) {...}
+});
+// 省略多个traverse
+traverse(ast, {
+  // 是某种类型的节点，则调用对应的函数进行修改
+  NumericLiteral (path) {...},
+  StringLiteral (path) {...}
+});
+const { code } = generator(ast);
+```
+
+`traverse`用dfs遍历AST，并在遍历前后提供钩子给我们，用于修改AST的节点。
+
+我们需要知道关于节点的一些知识。所有的节点都是`Node`，用IEDA点击`Node`查看类型定义：
+
+```ts
+export type Node = Accessor | AnyTypeAnnotation | ArgumentPlaceholder | ArrayExpression | ArrayPattern | ArrayTypeAnnotation | ArrowFunctionExpression | AssignmentExpression | AssignmentPattern | AwaitExpression | BigIntLiteral | Binary | BinaryExpression | BindExpression | Block | BlockParent | BlockStatement | BooleanLiteral | BooleanLiteralTypeAnnotation | BooleanTypeAnnotation | BreakStatement | CallExpression | CatchClause | Class | ClassAccessorProperty | ClassBody | ClassDeclaration | ClassExpression | ClassImplements | ClassMethod | ClassPrivateMethod | ClassPrivateProperty | ClassProperty | CompletionStatement | Conditional | ConditionalExpression | ContinueStatement | DebuggerStatement | DecimalLiteral | Declaration | DeclareClass | DeclareExportAllDeclaration | DeclareExportDeclaration | DeclareFunction | DeclareInterface | DeclareModule | DeclareModuleExports | DeclareOpaqueType | DeclareTypeAlias | DeclareVariable | DeclaredPredicate | Decorator | Directive | DirectiveLiteral | DoExpression | DoWhileStatement | EmptyStatement | EmptyTypeAnnotation | EnumBody | EnumBooleanBody | EnumBooleanMember | EnumDeclaration | EnumDefaultedMember | EnumMember | EnumNumberBody | EnumNumberMember | EnumStringBody | EnumStringMember | EnumSymbolBody | ExistsTypeAnnotation | ExportAllDeclaration | ExportDeclaration | ExportDefaultDeclaration | ExportDefaultSpecifier | ExportNamedDeclaration | ExportNamespaceSpecifier | ExportSpecifier | Expression | ExpressionStatement | ExpressionWrapper | File | Flow | FlowBaseAnnotation | FlowDeclaration | FlowPredicate | FlowType | For | ForInStatement | ForOfStatement | ForStatement | ForXStatement | Function | FunctionDeclaration | FunctionExpression | FunctionParent | FunctionTypeAnnotation | FunctionTypeParam | GenericTypeAnnotation | Identifier | IfStatement | Immutable | Import | ImportAttribute | ImportDeclaration | ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier | IndexedAccessType | InferredPredicate | InterfaceDeclaration | InterfaceExtends | InterfaceTypeAnnotation | InterpreterDirective | IntersectionTypeAnnotation | JSX | JSXAttribute | JSXClosingElement | JSXClosingFragment | JSXElement | JSXEmptyExpression | JSXExpressionContainer | JSXFragment | JSXIdentifier | JSXMemberExpression | JSXNamespacedName | JSXOpeningElement | JSXOpeningFragment | JSXSpreadAttribute | JSXSpreadChild | JSXText | LVal | LabeledStatement | Literal | LogicalExpression | Loop | MemberExpression | MetaProperty | Method | Miscellaneous | MixedTypeAnnotation | ModuleDeclaration | ModuleExpression | ModuleSpecifier | NewExpression | Noop | NullLiteral | NullLiteralTypeAnnotation | NullableTypeAnnotation | NumberLiteral | NumberLiteralTypeAnnotation | NumberTypeAnnotation | NumericLiteral | ObjectExpression | ObjectMember | ObjectMethod | ObjectPattern | ObjectProperty | ObjectTypeAnnotation | ObjectTypeCallProperty | ObjectTypeIndexer | ObjectTypeInternalSlot | ObjectTypeProperty | ObjectTypeSpreadProperty | OpaqueType | OptionalCallExpression | OptionalIndexedAccessType | OptionalMemberExpression | ParenthesizedExpression | Pattern | PatternLike | PipelineBareFunction | PipelinePrimaryTopicReference | PipelineTopicExpression | Placeholder | Private | PrivateName | Program | Property | Pureish | QualifiedTypeIdentifier | RecordExpression | RegExpLiteral | RegexLiteral | RestElement | RestProperty | ReturnStatement | Scopable | SequenceExpression | SpreadElement | SpreadProperty | Standardized | Statement | StaticBlock | StringLiteral | StringLiteralTypeAnnotation | StringTypeAnnotation | Super | SwitchCase | SwitchStatement | SymbolTypeAnnotation | TSAnyKeyword | TSArrayType | TSAsExpression | TSBaseType | TSBigIntKeyword | TSBooleanKeyword | TSCallSignatureDeclaration | TSConditionalType | TSConstructSignatureDeclaration | TSConstructorType | TSDeclareFunction | TSDeclareMethod | TSEntityName | TSEnumDeclaration | TSEnumMember | TSExportAssignment | TSExpressionWithTypeArguments | TSExternalModuleReference | TSFunctionType | TSImportEqualsDeclaration | TSImportType | TSIndexSignature | TSIndexedAccessType | TSInferType | TSInstantiationExpression | TSInterfaceBody | TSInterfaceDeclaration | TSIntersectionType | TSIntrinsicKeyword | TSLiteralType | TSMappedType | TSMethodSignature | TSModuleBlock | TSModuleDeclaration | TSNamedTupleMember | TSNamespaceExportDeclaration | TSNeverKeyword | TSNonNullExpression | TSNullKeyword | TSNumberKeyword | TSObjectKeyword | TSOptionalType | TSParameterProperty | TSParenthesizedType | TSPropertySignature | TSQualifiedName | TSRestType | TSStringKeyword | TSSymbolKeyword | TSThisType | TSTupleType | TSType | TSTypeAliasDeclaration | TSTypeAnnotation | TSTypeAssertion | TSTypeElement | TSTypeLiteral | TSTypeOperator | TSTypeParameter | TSTypeParameterDeclaration | TSTypeParameterInstantiation | TSTypePredicate | TSTypeQuery | TSTypeReference | TSUndefinedKeyword | TSUnionType | TSUnknownKeyword | TSVoidKeyword | TaggedTemplateExpression | TemplateElement | TemplateLiteral | Terminatorless | ThisExpression | ThisTypeAnnotation | ThrowStatement | TopicReference | TryStatement | TupleExpression | TupleTypeAnnotation | TypeAlias | TypeAnnotation | TypeCastExpression | TypeParameter | TypeParameterDeclaration | TypeParameterInstantiation | TypeScript | TypeofTypeAnnotation | UnaryExpression | UnaryLike | UnionTypeAnnotation | UpdateExpression | UserWhitespacable | V8IntrinsicIdentifier | VariableDeclaration | VariableDeclarator | Variance | VoidTypeAnnotation | While | WhileStatement | WithStatement | YieldExpression;
+```
+
+`Node`包含了`MemberExpression`、`Identifier`和`StringLiteral`等。
+
+对于`NodePath`我们暂时不需要知道太多，只需要知道：
+
+1. `path.replaceInline(Nodes extends Node | readonly Node[])`（可以传`Node[]`）、`path.replaceWith(Node)`等方法可以替换当前节点。
+2. `path.remove()`可以删除当前节点。
+3. `path.node`可以获取`NodePath`对应的节点。
+
+我们写AST处理代码的流程一般是：
+
+1. 通过AST的相关属性来匹配特征，找到要修改的节点所对应的`NodePath`。这部分代码占了绝大部分。这一步需要大量使用”类型守卫“的技巧来保证我们的代码考虑到了各种边界条件。
+2. 调用`path.replaceInline`等方法来修改AST。
+3. 删除对修改后的AST无用的节点，如未用到的变量和函数声明。
+
+这个工作最困难的地方在于，我们需要不停地观看 [astexplorer](https://astexplorer.net/) 给出的AST，来调整代码。最后再强调一次为什么要用TS：
 
 1. Babel的官方文档语焉不详，TypeScript的类型提示结合IDE是更好的文档。
 2. 写类型守卫的过程是在倒逼自己去思考各种边界情况，写出更健壮的代码。
 
+接下来给出几个有通用性的操作的demo，来迅速入门。
+
 ### 还原不直观的编码字符串或数值
 
-参考链接6。
-
-`translate_literal.ts`：
+对于数字，希望把`0x14`等变成10进制；对于常量串，希望把`'\u', '\x'`恢复成可见字符。参考链接6的代码处理得很不错。`src/translate_literal.ts`：
 
 ```ts
 import traverse from '@babel/traverse';
@@ -189,12 +341,12 @@ export function translateLiteral (ast: Node) {
 
 ### Babel实现变量重命名
 
+我们设计了一个简单的变量重命名方案：先遍历一次AST，收集所有”可以重命名的“变量，再给出新名字（形如`v1, v2, ...`），最后再遍历一次AST进行替换。
+
 - 为了提供最大的灵活性，我们设计了一个`canReplace`函数，让调用者自己决定哪些变量是参与替换的。
-- 我们设计了一个`renameMap`，允许调用者给出期望的变量重命名方案。
+- 我们设计了一个`renameMap`，允许调用者给出期望的变量重命名方案，提高可读性。
 
-我们默认的变量重命名方案，是先遍历一次AST，收集所有变量，给出新名字（形如`v1, v2, ...`），再遍历一次AST进行替换。
-
-注意：对于全局变量与局部变量存在同名的情况，这段代码可能是有问题的。
+注意：对于全局变量与局部变量存在同名的情况，这段代码可能是有问题的。希望能基于作用域进行完善。
 
 ```ts
 import traverse, { NodePath } from '@babel/traverse';
@@ -228,9 +380,20 @@ export function renameVars (
     }
   });
 }
+
+// 调用
+renameVars(
+  ast,
+  (name: string) => name.substring(0, 3) === '_0x',
+  {
+    enc: 'enc', _0x263396: 'i', _0x13adf6: 'out'
+  }
+);
 ```
 
 ### Babel MemberExpression Array Notation转Dot Notation
+
+前文提到，`Dot Notation`和`Array Notation`的`computed`分别为`false`和`true`。因此代码会很简单。
 
 ```ts
 import traverse, { NodePath } from '@babel/traverse';
@@ -263,9 +426,11 @@ export function memberExpComputedToFalse (ast: Node) {
 6. Babel还原不直观的编码字符串或数值：https://lzc6244.github.io/2021/07/28/Babel%E8%BF%98%E5%8E%9F%E4%B8%8D%E7%9B%B4%E8%A7%82%E7%9A%84%E7%BC%96%E7%A0%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%88%96%E6%95%B0%E5%80%BC.html
 7. AST在js逆向中switch-case反控制流平坦化：https://blog.csdn.net/Python_DJ/article/details/126882432
 
-## 用Babel解析AST处理OB混淆JS代码（三）：处理javascript-obfuscator（OB）的Strings Transformations（常量串隐藏）【全网首发】
+## 用Babel解析AST处理OB混淆JS代码（三）：处理Strings Transformations（全网首创）
 
-[这个网站](https://obfuscator.io/)就是[开源项目](https://github.com/javascript-obfuscator/javascript-obfuscator) `javascript-obfuscator`的Web UI。它提供了一个Strings Transformations用于隐藏常量串。我们勾选`String Array, String Array Rotate, String Array Shuffle`这3个选项，观察一下生成的代码的特征：
+### 引言
+
+[这个网站](https://obfuscator.io/)就是[开源项目](https://github.com/javascript-obfuscator/javascript-obfuscator) `javascript-obfuscator`（简称OB）的Web UI。它提供了一个`Strings Transformations`选项用于隐藏常量串。据我所知，还没有给出`Strings Transformations`解决方案的blog，因此可谓全网首创。我们勾选`String Array, String Array Rotate, String Array Shuffle`这3个选项，观察一下生成的代码的特征：
 
 ```js
 (function(_0x1f23fa, _0x502274) {
@@ -300,18 +465,31 @@ function _0x3ddf() {
 }
 ```
 
-可得：
+【52pojie】用Babel解析AST处理OB混淆JS代码（一）：https://www.52pojie.cn/thread-1700036-1-1.html
 
-- 这几个函数会随机换位置，干扰你的寻找。
-- 有常量串数组的函数，利用闭包来给出常量串数组，记为`sl`。
-- `_0x546b`函数仅仅是`(idx) => sl[idx - 0x6c]`。
+【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（三）：
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（四）：
+
+本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
+
+**作者：[hans774882968](https://blog.csdn.net/hans774882968)以及[hans774882968](https://juejin.cn/user/1464964842528888)以及[hans774882968](https://www.52pojie.cn/home.php?mod=space&uid=1906177)**
+
+可知：
+
+- 有一个自执行函数和两个函数。这3个函数会随机换位置，干扰你的分析。
+- 有常量串数组的函数`_0x3ddf`，利用**闭包**来给出常量串数组，记为`sl`。
+- `_0x546b`函数仅仅相当于`(idx) => sl[idx - 0x6c]`。
 - 自执行函数可以进行常量串数组的`shuffle`和`rotate`。
 
-再看常量串的获取方式：`_0x583af1(0x74)`。因此我们的目标就是把这种函数调用变为常量串。
+再看常量串的获取方式：`_0x583af1(0x74)`。因此我们的目标就是把这种函数调用恢复为常量串。开工！
 
-值得注意的是，每个函数开头都有`var _0x583af1 = _0x546b`这样的定义，因此我们需要识别实际上等于`_0x546b`的变量。相关代码：
+首先，每个函数开头都有`var _0x583af1 = _0x546b`这样的定义，因此我们需要识别实际上等于`_0x546b`的变量。相关代码：
 
 ```ts
+  // 如果常量表不止1处，则此代码不正确  
   const stringLiteralFuncs = ['_0x546b'];
   // 收集与常量串隐藏有关的变量
   traverse(ast, {
@@ -327,10 +505,10 @@ function _0x3ddf() {
 
 接下来需要拿到最终的常量串数组。暂时没找到优雅的方式，只能先用一个妥协方案：
 
-1. 因为常量串数组的最终形态是固定的，所以我们首先直接运行一下上面那段代码，拿到常量串数组的最终形态，然后把它硬编码进代码里。
-2. 获取常量串的函数自行实现，即硬编码进代码里。
+1. 因为常量串数组的最终形态是固定的，所以我们首先直接在浏览器控制台运行一下上面那段代码，再输入`_0x3ddf()`拿到常量串数组的最终形态，然后把它硬编码进代码里。
+2. 获取常量串的函数，我们设计为自行实现，即**硬编码**进代码里。
 
-相关代码：
+获取常量串的相关代码（直接展示了函数`restoreStringLiteral`如何调用）：
 
 ```ts
 restoreStringLiteral(ast, (idx: number) => {
@@ -338,6 +516,8 @@ restoreStringLiteral(ast, (idx: number) => {
 });
 // 调用：getStringArr(idx)
 ```
+
+最后，只需要`path.replaceWith(stringLiteral(getStringArr(idx)))`完成节点的替换。
 
 完整的相关代码：
 
@@ -371,6 +551,8 @@ restoreStringLiteral(ast, (idx: number) => {
   return ['30037Sxrenc', 'error!', 'len\x20error', 'XmvLm', 'Orz..', '1159374JpqDju', '267734qPEpMO', '364750QkecUn', 'shrai', 'length', 'KUTlo', 'Vwtjq', '99juDGtv', 'FhQZn', 'charCodeAt', 'FdUfK', '3tSVDal', 'Ajnur', '874980MJshmD', 'KclRu', 'Fhqhk', 'charAt', '187074oiwMPp', 'PjAeQ', 'ewhZd', '328PNtXbI', 'congratulation!', 'DpUmp', '57576xxZPaZ', '65fmhmYN', 'ualDk', 'RHSOY', 'log'][idx - 108];
 });
 ```
+
+TODO：找到一种避免硬编码的方式！
 
 ### 参考资料
 
