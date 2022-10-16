@@ -40,9 +40,9 @@ yarn
 
 【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
 
-【52pojie】用Babel解析AST处理OB混淆JS代码（三）：
+【52pojie】用Babel解析AST处理OB混淆JS代码（三）：https://www.52pojie.cn/thread-1700050-1-1.html
 
-【52pojie】用Babel解析AST处理OB混淆JS代码（四）：
+【52pojie】用Babel解析AST处理OB混淆JS代码（四）：https://www.52pojie.cn/thread-1700068-1-1.html
 
 本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
 
@@ -235,9 +235,9 @@ ExpressionStatement  {
 
 【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
 
-【52pojie】用Babel解析AST处理OB混淆JS代码（三）：
+【52pojie】用Babel解析AST处理OB混淆JS代码（三）：https://www.52pojie.cn/thread-1700050-1-1.html
 
-【52pojie】用Babel解析AST处理OB混淆JS代码（四）：
+【52pojie】用Babel解析AST处理OB混淆JS代码（四）：https://www.52pojie.cn/thread-1700068-1-1.html
 
 本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
 
@@ -469,9 +469,9 @@ function _0x3ddf() {
 
 【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
 
-【52pojie】用Babel解析AST处理OB混淆JS代码（三）：
+【52pojie】用Babel解析AST处理OB混淆JS代码（三）：https://www.52pojie.cn/thread-1700050-1-1.html
 
-【52pojie】用Babel解析AST处理OB混淆JS代码（四）：
+【52pojie】用Babel解析AST处理OB混淆JS代码（四）：https://www.52pojie.cn/thread-1700068-1-1.html
 
 本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
 
@@ -568,14 +568,26 @@ TODO：找到一种避免硬编码的方式！
 
 ### 引言
 
-通过引入状态机与循环，破坏代码上下文之间的阅读连续性和代码块之间的关联性，将若干个分散的小整体整合成一个巨大的循环体。实现方式是将代码块之间的原有关系打断，改为由一个分发器来控制代码块的跳转。特点：
+控制流平坦化通过引入状态机与循环，破坏代码上下文之间的阅读连续性和代码块之间的关联性，将若干个分散的小整体整合成一个巨大的循环体。实现方式是将代码块之间的原有顺序关系打断，改为由一个分发器来控制代码块的跳转。特点：
 
 - 无法还原成原来具体的函数。
 - 无法使用以函数为单位的调试方法，大幅度增加调试难度。
 - 降低代码运行效率，提高爬虫运行时执行JS的资源成本。
 - 可根据JS运行时检测到的某些因素自由跳转到蜜罐或跳出代码执行。
 
-所有教程都没有提及的是：控制流平坦化实际上至少有两种。第一种是语句级别的，用于打乱语序。第二种是表达式级别的，用于替换双目运算符、逻辑运算符和常量等。我们将尽力为[OB网站](https://obfuscator.io/)提供的两种控制流平坦化提供解决方案。
+所有教程都没有提及的是：控制流平坦化实际上至少有两种。第一种是语句级别的，用于打乱语序。第二种是表达式级别的，用于替换双目运算符、逻辑运算符和常量等。我们将尽力为 [OB网站](https://obfuscator.io/) 提供的两种控制流平坦化提供解决方案。
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（一）：https://www.52pojie.cn/thread-1700036-1-1.html
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（三）：https://www.52pojie.cn/thread-1700050-1-1.html
+
+【52pojie】用Babel解析AST处理OB混淆JS代码（四）：https://www.52pojie.cn/thread-1700068-1-1.html
+
+本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
+
+**作者：[hans774882968](https://blog.csdn.net/hans774882968)以及[hans774882968](https://juejin.cn/user/1464964842528888)以及[hans774882968](https://www.52pojie.cn/home.php?mod=space&uid=1906177)**
 
 ### 去除基于switch语句的控制流平坦化：先来解析一个简单的demo
 
@@ -617,9 +629,9 @@ while (true) {
 
 1. 获取`arr`运行时的值（是个定值）。
 2. 用Babel读取每一个`case`的body，具体取哪个`case`用`arr`确定。这里的body是`Statement[]`。
-3. 把上面的所有body拼接起来，得所求，类型仍为`Statement[]`。调用`path.replaceInline(Statement[])`来获取去除控制流平坦化的代码。
+3. 把上面的所有body拼接起来，得所求，类型仍为`Statement[]`。调用`path.replaceInline(Statement[])`来获取去除了控制流平坦化的代码。
 
-`src/hw.ts`的大多数代码都只是做第一步，因为考虑到源代码可能会变。为了方便，也可以选择直接硬编码第一步的结果。因此代码的骨架如下：
+`src/hw.ts`的大多数代码都只是做第一步，因为考虑到源代码可能会变，希望有一定通用性。为了方便，也可以选择直接硬编码第一步的结果。因此代码的骨架如下：
 
 ```ts
 const jsCode = getFile('src/inputs/hw.js');
@@ -648,7 +660,7 @@ writeOutputToFile('hw_out.js', code);
 
 这里偷懒了一下，直接用`cases[+index]`来取具体的`case`了，实际情况很可能要写额外的代码获取`cases[index].test.value`。
 
-完整代码看`src/hw.ts`即可。注意：
+完整代码看`src/hw.ts`。注意：
 
 1. 我们在项目根目录用`npm run cff hw`来运行`src/hw.ts`，所以读写文件要相对于项目根目录。
 
@@ -759,14 +771,16 @@ else console[_0x47f9f1(0x8c)](_0x47f9f1(0x8b));
 
 #### 产生基于switch语句的控制流平坦化的条件
 
+网上众多blog都没提到的：基于switch语句的控制流平坦化不总是能产生，需要一定条件。
+
 1. 所有相关变量必须是`var`声明，否则不能产生。
 2. 语句要足够多。
 
 #### 思路
 
-我们可以看到这里产生了一个基于switch语句的控制流平坦化。`_0x31ce85`变量就是字符串`'3|4|2|0|5|1'`，`_0x1ffdde`是单纯的自增变量。为了方便地在代码中拿到`_0x31ce85`的值，我们需要先去除`Strings Transformations`（常量串隐藏，可参考本系列的上一篇《用Babel解析AST处理OB混淆JS代码（三）》）。
+我们可以看到这里产生了一个基于switch语句的控制流平坦化。`_0x31ce85`变量就是字符串`'3|4|2|0|5|1'`，`_0x1ffdde`是单纯的自增变量。为了方便地在代码中拿到`_0x31ce85`的值，我们需要**先去除`Strings Transformations`**（常量串隐藏，可参考本系列的上一篇《[用Babel解析AST处理OB混淆JS代码（三）》](https://www.52pojie.cn/thread-1700050-1-1.html)）。
 
-参考链接7提供了一种不错的写法，能够在不硬编码的前提下方便地删除控制流平坦化的相关变量。它先使用`path.scope.getBinding(varName: string)`来获取当前作用域的变量名的`Binding`，然后调用`Binding.path.remove()`删除变量声明。更具体的用法可参考：https://juejin.cn/post/7113800415057018894。
+虽然难度一样，但是这一节我们提供更加完善的代码（~~其实是懒得整理了qwq~~）。我们上一节没有删除控制流平坦化的相关变量，因为比较麻烦。参考链接7提供了一种不错的写法，能够在不硬编码的前提下方便地删除控制流平坦化的相关变量。它先使用`path.scope.getBinding(varName: string)`来获取当前作用域的变量名的`Binding`，然后调用`Binding.path.remove()`删除变量声明。`Binding`更具体的用法可参考：https://juejin.cn/post/7113800415057018894。
 
 删除控制流平坦化相关变量绑定的节点的相关代码：
 
@@ -781,7 +795,7 @@ bindingArray.path.remove();
 bindingAutoIncrement.path.remove();
 ```
 
-去除基于switch语句的控制流平坦化部分的代码（完整代码见`src/switch_cff_demo.ts`）：
+去除基于switch语句的控制流平坦化部分的代码如下，完整代码见`src/switch_cff_demo.ts`。相比于上一节的代码，换了一种方式获取控制流平坦化的数组的值：
 
 ```ts
 function switchCFF (ast: Node) {
@@ -893,7 +907,7 @@ function test()
 test();
 ```
 
-在[OB网站](https://obfuscator.io/)中使用如下选项加密：`Control Flow Flattening`，`Control Flow Flattening Threshold`选择1，注意不要让网站隐藏常量串，因为我们这个版本的脚本还不支持。得到的代码如`src/inputs/check_pass_demo_easy.js`所示：
+在 [OB网站](https://obfuscator.io/) 中使用如下选项加密：`Control Flow Flattening`，`Control Flow Flattening Threshold`选择1，注意不要让网站隐藏常量串，因为我们这个版本的脚本还不支持。得到的代码如`src/inputs/check_pass_demo_easy.js`所示：
 
 ```js
 function check_pass (_0x57a7be) {
@@ -987,7 +1001,7 @@ test();
 由于水平有限（鶸），这段代码：
 
 - 不能识别作用域。如果存在多个层的作用域的变量同名，则无法正确去掉控制流平坦化。
-- 控制流平坦化的哈希表的方括号只能识别常量串。需要先去除常量串隐藏，再调用该函数。
+- 控制流平坦化的哈希表的方括号只能识别常量串。需要**先去除常量串隐藏**，再调用该函数。
 
 完整代码见`src/check_pass_demo_easy.ts`：
 
@@ -1139,6 +1153,366 @@ function test () {
 }
 test();
 ```
+
+### 最后提供一个比较完整的demo
+
+相关的流程：
+
+1. 恢复被隐藏的常量串
+2. 去除`Strings Transformations`（常量串隐藏）
+3. 识别无用代码并删除（本文没涉及）
+4. 去除控制流平坦化
+5. 清理常量串隐藏和控制流平坦化带来的无用变量
+6. MemberExpression Array Notation转Dot Notation
+7. 重命名变量
+8. 还原不直观的编码字符串或数值
+9. ……
+
+`src/switch_cff_demo.ts`的骨架基本上和`src/check_pass_demo.ts`类似，只不过更完善。这表明我的代码有一定的通用性。`src/switch_cff_demo.ts`
+
+```ts
+import * as parser from '@babel/parser';
+import { renameVars } from './rename_vars';
+import generator from '@babel/generator';
+import { getFile, writeOutputToFile } from './file_utils';
+import { memberExpComputedToFalse } from './member_exp_computed_to_false';
+import { translateLiteral } from './translate_literal';
+import traverse from '@babel/traverse';
+import {
+  Node,
+  isIdentifier,
+  isMemberExpression,
+  isObjectExpression,
+  isObjectProperty,
+  isStringLiteral,
+  isFunctionExpression,
+  isReturnStatement,
+  isBinaryExpression,
+  binaryExpression,
+  isLogicalExpression,
+  logicalExpression,
+  isCallExpression,
+  callExpression,
+  isExpression,
+  isNumericLiteral,
+  stringLiteral,
+  isBlockStatement,
+  isSwitchStatement,
+  isVariableDeclarator,
+  isContinueStatement,
+  Statement,
+  isUpdateExpression
+} from '@babel/types';
+
+const jsCode = getFile('src/inputs/switch_cff_demo.js');
+const ast = parser.parse(jsCode);
+
+// 如果常量表不止1处，则此代码不正确
+function restoreStringLiteral (ast: Node, stringLiteralFuncs: string[], getStringArr: (idx: number) => string) {
+  // 收集与常量串隐藏有关的变量
+  traverse(ast, {
+    VariableDeclarator (path) {
+      const vaNode = path.node;
+      if (!isIdentifier(vaNode.init) || !isIdentifier(vaNode.id)) return;
+      if (stringLiteralFuncs.includes(vaNode.init.name)) {
+        stringLiteralFuncs.push(vaNode.id.name);
+      }
+    }
+  });
+  traverse(ast, {
+    CallExpression (path) {
+      const cNode = path.node;
+      if (!isIdentifier(cNode.callee)) return;
+      const varName = cNode.callee.name;
+      if (!stringLiteralFuncs.includes(varName)) return;
+      if (cNode.arguments.length !== 1 || !isNumericLiteral(cNode.arguments[0])) return;
+      const idx = cNode.arguments[0].value;
+      path.replaceWith(stringLiteral(getStringArr(idx)));
+    }
+  });
+}
+restoreStringLiteral(ast, ['_0x27c4'], (idx: number) => {
+  return ['661835nuUXrL', 'dKifE', 'try again', 'log', '7aEbwep', 'awvtQ', '2804302XtaWgC', 'rmnID', 'flag{hans}', '21393471OyFTzd', 'lXUhG', '1914456NQDFwp', '1xRwaZJ', '36ZbcbZP', '3gJgrjU', '8162226GwaJpl', '3|4|2|0|5|1', 'split', 'charCodeAt', 'pass', '6278120IHpVNF', 'W_PTJ[P]BN', 'length', 'fromCharCode', '939280gOLaZV'][idx - 0x89];
+});
+
+function cff (ast: Node) {
+  type ASTNodeMap = {[key: string]: Node}
+  const cffTables: {[key: string]: ASTNodeMap} = {};
+  traverse(ast, {
+    VariableDeclarator (path) {
+      const node = path.node;
+      if (!node.id || !isIdentifier(node.id)) return;
+      const tableName = node.id.name;
+      if (!isObjectExpression(node.init)) return;
+      const tableProperties = node.init.properties;
+      cffTables[tableName] = tableProperties.reduce((cffTable, tableProperty) => {
+        if (!isObjectProperty(tableProperty) ||
+           !isStringLiteral(tableProperty.key)) return cffTable;
+        cffTable[tableProperty.key.value] = tableProperty.value;
+        return cffTable;
+      }, {} as ASTNodeMap);
+    }
+  });
+
+  traverse(ast, {
+    CallExpression (path) {
+      const cNode = path.node;
+      if (isMemberExpression(cNode.callee)) {
+        if (!isIdentifier(cNode.callee.object)) return;
+        const callParams = cNode.arguments;
+        const tableName = cNode.callee.object.name;
+        if (!isStringLiteral(cNode.callee.property)) return;
+        const keyName = cNode.callee.property.value;
+        if (!(tableName in cffTables) ||
+            !(keyName in cffTables[tableName])) return;
+        const shouldBeFuncValue = cffTables[tableName][keyName];
+        if (!isFunctionExpression(shouldBeFuncValue) ||
+            !shouldBeFuncValue.body.body.length ||
+            !isReturnStatement(shouldBeFuncValue.body.body[0])) return;
+        // 拿到返回值
+        const callArgument = shouldBeFuncValue.body.body[0].argument;
+        if (isBinaryExpression(callArgument) && callParams.length === 2) {
+          if (!isExpression(callParams[0]) || !isExpression(callParams[1])) {
+            throw '二元运算符中，两个参数都应为表达式';
+          }
+          // 处理function(x, y){return x + y}这种形式
+          path.replaceWith(binaryExpression(callArgument.operator, callParams[0], callParams[1]));
+        } else if (isLogicalExpression(callArgument) && callParams.length === 2) {
+          if (!isExpression(callParams[0]) || !isExpression(callParams[1])) {
+            throw '逻辑运算符中，两个参数都应为表达式';
+          }
+          // 处理function(x, y){return x > y}这种形式
+          path.replaceWith(logicalExpression(callArgument.operator, callParams[0], callParams[1]));
+        } else if (isCallExpression(callArgument) && isIdentifier(callArgument.callee)) {
+          // 处理function(f, ...args){return f(...args)}这种形式
+          if (callParams.length == 1) {
+            path.replaceWith(callParams[0]);
+          } else {
+            if (!isExpression(callParams[0])) {
+              throw '仅支持第一个参数为函数的形式，如：function(f, ...args){return f(...args)}';
+            }
+            path.replaceWith(callExpression(callParams[0], callParams.slice(1)));
+          }
+        }
+      }
+    },
+    MemberExpression (path) {
+      const mNode = path.node;
+      if (!isIdentifier(mNode.object)) return;
+      const tableName = mNode.object.name;
+      if (!isStringLiteral(mNode.property)) return;
+      const keyName = mNode.property.value;
+      if (!(tableName in cffTables) ||
+          !(keyName in cffTables[tableName])) return;
+      const cffTableValue = cffTables[tableName][keyName];
+      path.replaceWith<Node>(cffTableValue);
+    }
+  });
+}
+cff(ast);
+
+function switchCFF (ast: Node) {
+  traverse(ast, {
+    WhileStatement (path) {
+      const wNode = path.node;
+      if (!isBlockStatement(wNode.body) || !wNode.body.body.length) return;
+      const switchNode = wNode.body.body[0];
+      if (!isSwitchStatement(switchNode)) return;
+      const { discriminant, cases } = switchNode;
+      if (!isMemberExpression(discriminant) ||
+          !isIdentifier(discriminant.object)) return;
+      // switch语句内的控制流平坦化数组名，本例中是 _0x31ce85
+      const arrayName = discriminant.object.name;
+      // 获取控制流平坦化数组绑定的节点
+      const bindingArray = path.scope.getBinding(arrayName);
+      if (!bindingArray) return;
+      // 经过restoreStringLiteral，我们认为它已经恢复为'v1|v2...'['split']('|')
+      if (!isVariableDeclarator(bindingArray.path.node) ||
+          !isCallExpression(bindingArray.path.node.init)) return;
+      const varInit = bindingArray.path.node.init;
+      if (!isMemberExpression(varInit.callee) ||
+          !isStringLiteral(varInit.callee.object) ||
+          varInit.arguments.length !== 1 ||
+          !isStringLiteral(varInit.arguments[0])) return;
+      const object = varInit.callee.object.value;
+      const propty = varInit.callee.property;
+      if (!isStringLiteral(propty) && !isIdentifier(propty)) return;
+      const propertyName = isStringLiteral(propty) ? propty.value : propty.name;
+      const splitArg = varInit.arguments[0].value;
+      // 目前只支持'v1|v2...'.split('|')的解析
+      if (propertyName !== 'split') {
+        console.warn('switchCFF(ast)：目前只支持\'v1|v2...\'.split(\'|\')的解析');
+        return;
+      }
+      const indexArr = object[propertyName](splitArg);
+
+      const replaceBody = indexArr.reduce((replaceBody, index) => {
+        const caseBody = cases[+index].consequent;
+        if (isContinueStatement(caseBody[caseBody.length - 1])) {
+          caseBody.pop();
+        }
+        return replaceBody.concat(caseBody);
+      }, [] as Statement[]);
+      path.replaceInline(replaceBody);
+
+      // 可选择的操作：删除控制流平坦化数组绑定的节点、自增变量名绑定的节点
+      if (!isUpdateExpression(discriminant.property) ||
+          !isIdentifier(discriminant.property.argument)) return;
+      const autoIncrementName = discriminant.property.argument.name;
+      const bindingAutoIncrement = path.scope.getBinding(autoIncrementName);
+      if (!bindingAutoIncrement) return;
+      bindingArray.path.remove();
+      bindingAutoIncrement.path.remove();
+    }
+  });
+}
+switchCFF(ast);
+
+function removeStringTransCodes (ast: Node) {
+  traverse(ast, {
+    // 去除给string数组进行随机移位的自执行函数
+    CallExpression (path) {
+      if (!isFunctionExpression(path.node.callee)) return;
+      if (path.node.arguments.length !== 2 ||
+          !isNumericLiteral(path.node.arguments[1]) ||
+          path.node.arguments[1].value !== 0xdbab3) return;
+      path.remove();
+    },
+    // 去除给string数组进行随机移位的函数
+    FunctionDeclaration (path) {
+      if (!isIdentifier(path.node.id)) return;
+      const funcName = path.node.id.name;
+      if (!['_0x27c4', '_0x379e'].includes(funcName)) return;
+      path.remove();
+    },
+    // 去除控制流平坦化的哈希表和用于隐藏常量串的变量
+    VariableDeclarator (path) {
+      if (!isIdentifier(path.node.id)) return;
+      const varName = path.node.id.name;
+      // 控制流平坦化的哈希表和用于隐藏常量串的变量
+      if (!['_0x550d17', '_0x55bea2', '_0x47f9f1'].includes(varName)) return;
+      path.remove();
+    }
+  });
+}
+removeStringTransCodes(ast);
+
+memberExpComputedToFalse(ast);
+renameVars(
+  ast,
+  (name:string) => name.substring(0, 3) === '_0x',
+  {
+    enc: 'enc', _0x263396: 'i', _0x13adf6: 'out'
+  }
+);
+translateLiteral(ast);
+
+const { code } = generator(ast);
+writeOutputToFile('switch_cff_demo_out.js', code);
+```
+
+解混淆前：
+
+```js
+var _0x47f9f1 = _0x27c4;
+(function (_0x47124a, _0x19f73e) {
+  var _0x3b6574 = _0x27c4,
+    _0x2c307d = _0x47124a();
+  while ([]) {
+    try {
+      var _0x585cd6 = parseInt(_0x3b6574(0x95)) / 0x1 * (parseInt(_0x3b6574(0x8f)) / 0x2) + -parseInt(_0x3b6574(0x97)) / 0x3 * (parseInt(_0x3b6574(0x9d)) / 0x4) + -parseInt(_0x3b6574(0x89)) / 0x5 + -parseInt(_0x3b6574(0x98)) / 0x6 + -parseInt(_0x3b6574(0x8d)) / 0x7 * (-parseInt(_0x3b6574(0x94)) / 0x8) + parseInt(_0x3b6574(0x96)) / 0x9 * (parseInt(_0x3b6574(0xa1)) / 0xa) + parseInt(_0x3b6574(0x92)) / 0xb;
+      if (_0x585cd6 === _0x19f73e) break;
+      else _0x2c307d['push'](_0x2c307d['shift']());
+    } catch (_0x28b17f) {
+      _0x2c307d['push'](_0x2c307d['shift']());
+    }
+  }
+}(_0x379e, 0xdbab3));
+
+function _0x27c4 (_0x122105, _0x24f040) {
+  var _0x379e52 = _0x379e();
+  return _0x27c4 = function (_0x27c4d4, _0x569919) {
+    _0x27c4d4 = _0x27c4d4 - 0x89;
+    var _0x5dfb85 = _0x379e52[_0x27c4d4];
+    return _0x5dfb85;
+  }, _0x27c4(_0x122105, _0x24f040);
+}
+
+function _0x379e () {
+  var _0x3ed6e2 = ['1914456NQDFwp', '1xRwaZJ', '36ZbcbZP', '3gJgrjU', '8162226GwaJpl', '3|4|2|0|5|1', 'split', 'charCodeAt', 'pass', '6278120IHpVNF', 'W_PTJ[P]BN', 'length', 'fromCharCode', '939280gOLaZV', '661835nuUXrL', 'dKifE', 'try\x20again', 'log', '7aEbwep', 'awvtQ', '2804302XtaWgC', 'rmnID', 'flag{hans}', '21393471OyFTzd', 'lXUhG'];
+  _0x379e = function () {
+    return _0x3ed6e2;
+  };
+  return _0x379e();
+}
+
+function enc (_0x3bf54e) {
+  var _0x55bea2 = _0x27c4,
+    _0x550d17 = {
+      'dKifE': _0x55bea2(0x99),
+      'lXUhG': function (_0x7a78d6, _0x13ee42) {
+        return _0x7a78d6 < _0x13ee42;
+      },
+      'rmnID': function (_0x28f0fb, _0x77896d) {
+        return _0x28f0fb & _0x77896d;
+      },
+      'awvtQ': function (_0x26b565, _0x3ffc0b) {
+        return _0x26b565 ^ _0x3ffc0b;
+      }
+    },
+    _0x31ce85 = _0x550d17[_0x55bea2(0x8a)][_0x55bea2(0x9a)]('|'),
+    _0x1ffdde = 0x0;
+  while ([]) {
+    switch (_0x31ce85[_0x1ffdde++]) {
+      case '0':
+        _0x263396 += 0x1;
+        continue;
+      case '1':
+        return _0x13adf6;
+      case '2':
+        var _0x13adf6 = '';
+        continue;
+      case '3':
+        var _0x263396 = 0x0;
+        continue;
+      case '4':
+        _0x263396 += -0x1;
+        continue;
+      case '5':
+        for (; _0x550d17[_0x55bea2(0x93)](_0x263396, _0x3bf54e[_0x55bea2(0x9f)]); ++_0x263396) {
+          var _0x494484 = 0x0;
+          if (_0x550d17[_0x55bea2(0x90)](_0x263396, 0x1)) _0x494484 = 0x33;
+          else _0x494484 = 0x31;
+          _0x13adf6 += String[_0x55bea2(0xa0)](_0x550d17[_0x55bea2(0x8e)](_0x3bf54e[_0x263396][_0x55bea2(0x9b)](), _0x494484));
+        }
+        continue;
+    }
+    break;
+  }
+}
+if (enc(_0x47f9f1(0x91)) === _0x47f9f1(0x9e)) console[_0x47f9f1(0x8c)](_0x47f9f1(0x9c));
+else console[_0x47f9f1(0x8c)](_0x47f9f1(0x8b));
+```
+
+解混淆后：
+
+```js
+function enc (v1) {
+  var i = 0;
+  i += -1;
+  var out = '';
+  i += 1;
+  for (; i < v1.length; ++i) {
+    var v2 = 0;
+    if (i & 1) v2 = 51;else v2 = 49;
+    out += String.fromCharCode(v1[i].charCodeAt() ^ v2);
+  }
+  return out;
+}
+if (enc('flag{hans}') === 'W_PTJ[P]BN') console.log('pass');else console.log('try again');
+```
+
+完美还原！
 
 ### 参考资料
 
