@@ -159,6 +159,28 @@ console.log(jsCode.substring(0, 60));
 npm run cff check_pass_demo
 ```
 
+### TypeScript配置Jest
+
+```bash
+yarn add jest ts-jest @types/jest -D
+npx ts-jest config:init
+yarn add babel-jest @babel/core @babel/preset-env @babel/preset-typescript -D
+```
+
+
+
+`translate_literal.test.ts`
+
+执行命令
+
+可以：
+
+```bash
+yarn test
+```
+
+也可以直接点击代码行号旁边绿色的三角形。
+
 ### 参考资料
 
 1. npm package.json scripts 传递参数的解决方案：https://juejin.cn/post/7032919800662016031
