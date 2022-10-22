@@ -159,21 +159,94 @@ console.log(jsCode.substring(0, 60));
 npm run cff check_pass_demo
 ```
 
-### TypeScript配置Jest
+### 动态指定执行命令更好的做法：%npm_config_<参数名>%
+
+这种方式更好，甚至支持多个参数。`package.json`的`scripts`添加：
+
+```json
+"scripts": {
+    "xxx": "node %npm_config_x1%/%npm_config_x2%.js"
+}
+```
+
+命令：
+
+```bash
+npm run xxx --x1=src --x2=hw
+```
+
+虽然输出的命令是`node %npm_config_x1%/%npm_config_x2%.js`，但是确实执行的是`node src/hw.js`。值得注意的是，`yarn xxx --x1=src --x2=hw`会报错，暂时**不清楚原因**。
+
+### TypeScript配置Jest单元测试
+
+首先执行命令：
 
 ```bash
 yarn add jest ts-jest @types/jest -D
+# npx从npm5.2版本开始，就与npm捆绑在一起，所以可以直接用npx命令。如果不行就yarn add global npx
+# 创建jest.config.js
 npx ts-jest config:init
 yarn add babel-jest @babel/core @babel/preset-env @babel/preset-typescript -D
 ```
 
+`npx`命令生成的`jest.config.js`：
 
+```js
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node'
+};
+```
 
-`translate_literal.test.ts`
+接着，根据[官方文档](https://jestjs.io/zh-Hans/docs/getting-started#%E4%BD%BF%E7%94%A8-typescript)（参考链接8），为了让Jest支持TS，必须配置好Babel。新建`babel.config.js`：
 
-执行命令
+```js
+module.exports = {
+  presets: [
+    ['@babel/preset-env', { targets: { node: 'current' }}],
+    '@babel/preset-typescript'
+  ]
+};
+```
 
-可以：
+然后，在package.json文件中添加命令，方便我们执行测试命令：
+
+```json
+"scripts": {
+    "test": "jest",
+    "test:help": "jest --help",
+}
+```
+
+环境配好了，可以开始写代码了！`test/translate_literal.test.ts`（文件名必须以`.test.ts`结尾，文件所处的位置倒不重要）：
+
+```ts
+import { translateLiteral } from '../src/translate_literal';
+import * as parser from '@babel/parser';
+import generator from '@babel/generator';
+
+test('Unicode Escape Sequence', () => {
+  const jsCode = 'const s=\'\x66\x6c\x61\x67\x7b\u522b\u5b66\u4e86\uff0c\u7761\u5927\u89c9\u53bb\uff01\x7d\';';
+  const expected = 'const s = \'flag{别学了，睡大觉去！}\';';
+  const ast = parser.parse(jsCode);
+  translateLiteral(ast);
+  const { code: res } = generator(ast);
+  expect(res).toBe(expected);
+});
+
+// 目前translateLiteral不支持010 = 8的识别
+test('Numbers', () => {
+  const jsCode = 'const v = 0x31 + 0o10 + 0b100 + 2;';
+  const expected = 'const v = 49 + 8 + 4 + 2;';
+  const ast = parser.parse(jsCode);
+  translateLiteral(ast);
+  const { code: res } = generator(ast);
+  expect(res).toBe(expected);
+});
+```
+
+执行单测可以用命令：
 
 ```bash
 yarn test
@@ -190,6 +263,7 @@ yarn test
 5. Babel AST节点介绍：https://www.jianshu.com/p/4f27f4aa576f
 6. Babel还原不直观的编码字符串或数值：https://lzc6244.github.io/2021/07/28/Babel%E8%BF%98%E5%8E%9F%E4%B8%8D%E7%9B%B4%E8%A7%82%E7%9A%84%E7%BC%96%E7%A0%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%88%96%E6%95%B0%E5%80%BC.html
 7. AST在js逆向中switch-case反控制流平坦化：https://blog.csdn.net/Python_DJ/article/details/126882432
+8. Jest官方文档：https://jestjs.io/zh-Hans/docs/getting-started#%E4%BD%BF%E7%94%A8-typescript
 
 ## 用Babel解析AST处理OB混淆JS代码（二）：一些通用的基本操作
 
@@ -447,6 +521,7 @@ export function memberExpComputedToFalse (ast: Node) {
 5. Babel AST节点介绍：https://www.jianshu.com/p/4f27f4aa576f
 6. Babel还原不直观的编码字符串或数值：https://lzc6244.github.io/2021/07/28/Babel%E8%BF%98%E5%8E%9F%E4%B8%8D%E7%9B%B4%E8%A7%82%E7%9A%84%E7%BC%96%E7%A0%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%88%96%E6%95%B0%E5%80%BC.html
 7. AST在js逆向中switch-case反控制流平坦化：https://blog.csdn.net/Python_DJ/article/details/126882432
+8. Jest官方文档：https://jestjs.io/zh-Hans/docs/getting-started#%E4%BD%BF%E7%94%A8-typescript
 
 ## 用Babel解析AST处理OB混淆JS代码（三）：处理Strings Transformations（全网首创）
 
@@ -585,6 +660,7 @@ TODO：找到一种避免硬编码的方式！
 5. Babel AST节点介绍：https://www.jianshu.com/p/4f27f4aa576f
 6. Babel还原不直观的编码字符串或数值：https://lzc6244.github.io/2021/07/28/Babel%E8%BF%98%E5%8E%9F%E4%B8%8D%E7%9B%B4%E8%A7%82%E7%9A%84%E7%BC%96%E7%A0%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%88%96%E6%95%B0%E5%80%BC.html
 7. AST在js逆向中switch-case反控制流平坦化：https://blog.csdn.net/Python_DJ/article/details/126882432
+8. Jest官方文档：https://jestjs.io/zh-Hans/docs/getting-started#%E4%BD%BF%E7%94%A8-typescript
 
 ## 用Babel解析AST处理OB混淆JS代码（四）：处理控制流平坦化
 
@@ -1545,6 +1621,7 @@ if (enc('flag{hans}') === 'W_PTJ[P]BN') console.log('pass');else console.log('tr
 5. Babel AST节点介绍：https://www.jianshu.com/p/4f27f4aa576f
 6. Babel还原不直观的编码字符串或数值：https://lzc6244.github.io/2021/07/28/Babel%E8%BF%98%E5%8E%9F%E4%B8%8D%E7%9B%B4%E8%A7%82%E7%9A%84%E7%BC%96%E7%A0%81%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%88%96%E6%95%B0%E5%80%BC.html
 7. AST在js逆向中switch-case反控制流平坦化：https://blog.csdn.net/Python_DJ/article/details/126882432
+8. Jest官方文档：https://jestjs.io/zh-Hans/docs/getting-started#%E4%BD%BF%E7%94%A8-typescript
 
 ## 用AST处理混淆代码的流程总结
 
