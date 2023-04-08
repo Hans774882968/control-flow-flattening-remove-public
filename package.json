@@ -4,9 +4,9 @@
   "description": "去除控制流平坦化",
   "main": "index.js",
   "scripts": {
-    "test": "jest",
-    "test:help": "jest --help",
-    "lint": "eslint \"src/*.{js,jsx,ts,tsx}\" \"src/**/*.{js,jsx,ts,tsx}\" \"test/*.{js,jsx,ts,tsx}\" \"test/**/*.{js,jsx,ts,tsx}\" \"*.{js,jsx,ts,tsx}\" --fix",
+    "test": "tsc && jest",
+    "test:help": "tsc && jest --help",
+    "lint": "eslint \"src/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" \"test/*.{js,jsx,ts,tsx}\" \"test/**/*.{js,jsx,ts,tsx}\" \"*.{js,jsx,ts,tsx}\" --fix",
     "cff": "node cff.js",
     "view": "tsc && node src/%npm_config_fname%.js"
   },
