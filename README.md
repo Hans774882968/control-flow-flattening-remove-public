@@ -14,7 +14,7 @@ yarn add shelljs -D
 yarn
 ```
 
-`package.json`指定的依赖如下：
+`package.json`指定的**主要**依赖如下：
 
 ```json
   "devDependencies": {
@@ -32,17 +32,12 @@ yarn
     "@babel/parser": "^7.18.13",
     "@babel/preset-env": "^7.18.10",
     "@babel/traverse": "^7.18.13",
+    "ts-node": "^10.9.1",
     "typescript": "^4.7.4"
   }
 ```
 
-【52pojie】用Babel解析AST处理OB混淆JS代码（一）：https://www.52pojie.cn/thread-1700036-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（三）：https://www.52pojie.cn/thread-1700050-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（四）：https://www.52pojie.cn/thread-1700068-1-1.html
+【52pojie】用Babel解析AST处理OB混淆JS代码：https://www.52pojie.cn/thread-1700036-1-1.html
 
 本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
 
@@ -109,7 +104,7 @@ this.cliEngine = require(this.basicPath + "lib/cli-engine").CLIEngine;
 
 > 后续：呵呵呵这次IDEA叕不能显示TypeScript的eslint错误了，明明啥都装了……幸好还能通过`npm run lint`来format。不得不说**eslint永远得神**……
 
-### 动态指定执行命令：用npm scripts+nodejs脚本解决
+### 动态指定执行命令（1）用npm scripts+nodejs脚本解决
 
 希望实现：在项目根目录输入命令`npm run cff <fname>`，自动执行`tsc && node src/<fname>.js`。
 
@@ -159,7 +154,7 @@ console.log(jsCode.substring(0, 60));
 npm run cff check_pass_demo
 ```
 
-### 动态指定执行命令更好的做法：%npm_config_<参数名>%
+### 动态指定执行命令更好的做法（2）%npm_config_<参数名>%
 
 这种方式更好，甚至支持多个参数。`package.json`的`scripts`添加：
 
@@ -176,6 +171,20 @@ npm run xxx --x1=src --x2=hw
 ```
 
 虽然输出的命令是`node %npm_config_x1%/%npm_config_x2%.js`，但是确实执行的是`node src/hw.js`。值得注意的是，`yarn xxx --x1=src --x2=hw`会报错，暂时**不清楚原因**。
+
+### 动态指定执行命令（3）基于ts-node
+
+基于`ts-node`的好处是：不再需要用`tsc`命令生成多余的js文件。新增命令：
+
+```json
+{
+  "scripts": {
+    "exp": "node --loader ts-node/esm %npm_config_fname%"
+  }
+}
+```
+
+食用方式：`npm run exp --fname=src/switch_cff_demo.ts`。
 
 ### TypeScript配置Jest单元测试
 
@@ -325,17 +334,7 @@ ExpressionStatement  {
 3. `CallExpression`主要关注`callee`和`arguments`属性，分别表示被调用的函数和参数列表。
 4. `MemberExpression`主要关注`object`、`property`和`computed`属性，分别表示对象，属性和是否是计算属性。`Dot Notation`和`Array Notation`的`computed`分别为`false`和`true`。
 
-我们需要不断地看AST，归纳出特征，才能写出正确的代码。
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（一）：https://www.52pojie.cn/thread-1700036-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（三）：https://www.52pojie.cn/thread-1700050-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（四）：https://www.52pojie.cn/thread-1700068-1-1.html
-
-本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
+我们需要不断地看AST，归纳出特征，才能写出正确的代码。更进一步地说，整篇blog的核心其实只有4个字：**特征匹配**。受限于编程能力，我也和大家一样，没有能力提供一个放之四海而皆准的AST脚本。承认这一点之后，我们反而可以放开手脚，为每个使用OB的网站进行代码定制，将更多“业务相关”（即只适用于当前网站）的特征用代码表达出来。
 
 **作者：[hans774882968](https://blog.csdn.net/hans774882968)以及[hans774882968](https://juejin.cn/user/1464964842528888)以及[hans774882968](https://www.52pojie.cn/home.php?mod=space&uid=1906177)**
 
@@ -523,7 +522,7 @@ export function memberExpComputedToFalse (ast: Node) {
 7. AST在js逆向中switch-case反控制流平坦化：https://blog.csdn.net/Python_DJ/article/details/126882432
 8. Jest官方文档：https://jestjs.io/zh-Hans/docs/getting-started#%E4%BD%BF%E7%94%A8-typescript
 
-## 用Babel解析AST处理OB混淆JS代码（三）：处理Strings Transformations（全网首创）
+## 用Babel解析AST处理OB混淆JS代码（三）：处理Strings Transformations
 
 ### 引言
 
@@ -562,24 +561,14 @@ function _0x3ddf() {
 }
 ```
 
-【52pojie】用Babel解析AST处理OB混淆JS代码（一）：https://www.52pojie.cn/thread-1700036-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（三）：https://www.52pojie.cn/thread-1700050-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（四）：https://www.52pojie.cn/thread-1700068-1-1.html
-
-本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
-
 **作者：[hans774882968](https://blog.csdn.net/hans774882968)以及[hans774882968](https://juejin.cn/user/1464964842528888)以及[hans774882968](https://www.52pojie.cn/home.php?mod=space&uid=1906177)**
 
 可知：
 
-- 有一个自执行函数和两个函数。这3个函数会随机换位置，干扰你的分析。
+- 有一个自执行函数和两个函数。这3个函数会随机换位置，干扰你的分析。之所以可以换位置，是因为JS有函数提升机制。
 - 有常量串数组的函数`_0x3ddf`，利用**闭包**来给出常量串数组，记为`sl`。
 - `_0x546b`函数仅仅相当于`(idx) => sl[idx - 0x6c]`。
-- 自执行函数可以进行常量串数组的`shuffle`和`rotate`。
+- 自执行函数可以进行常量串数组的`shuffle`和`rotate`。在这个例子中只进行了`rotate`。这里用到了`parseInt`的一个性质：字符串以数字为前缀时，只会解析到前面的数字。因此可以肯定OB生成的这些数字所对应的表达式的值要么等于入参`0x20d95`，要么得到`NaN`。这个套路主要是导致`rotate`操作次数不确定了，如果我们希望写出自动化的脚本，就不得不提取这个表达式的所有函数参数，再模拟自执行函数的执行过程。提取函数参数的思路是有的：特征匹配+自行实现一段dfs，不过实现起来就比较麻烦了，放到以后的TODO里吧~
 
 再看常量串的获取方式：`_0x583af1(0x74)`。因此我们的目标就是把这种函数调用恢复为常量串。开工！
 
@@ -649,7 +638,159 @@ restoreStringLiteral(ast, (idx: number) => {
 });
 ```
 
+为了配合后文《避免硬编码》的实现，我还是将`restoreStringLiteral`的参数改为3个了：`ast, stringLiteralFuncs, getStringArr`，于是这段逻辑就完全依赖于“只有1处常量表”的假设了。
+
 TODO：找到一种避免硬编码的方式！
+
+### 避免硬编码：最简单的情况
+
+样例：
+
+```js
+var _0xa9e0 = ['JxsFw', 'iksgN', 'qDbwG', 'prototype', 'spzgJ', 'test', 'lo1c0tQyRk7E/Lr2p3puiAKrzgb8Absq4EWawXjoVfP230ItoMvvmsg3H8ccHG1u1qA+T/T4f3Rwi5j40osnuhQGtUj0w5rjN5FglNam4JRHNS126MHWX6+Zk/Aez8M7WttDCxtn6N6/pwWRtVat6vPkvmw9ETifmJ5C94R9hoGnDvNjntiKW6m5HPr+b/j0IvHCUJz8pX4ofi12NyD5aA==', 'enc', 'Latin1', 'parse', 'B79CD410AF398F7A', 'window', 'location', 'href', '146385F634C9CB00', 'ZeroPadding', 'toString', 'Utf8', 'split', 'length', 'createElement', 'style', 'type', 'text/css', 'setAttribute', 'link', 'getElementsByTagName', 'gHLRp', 'CbiRt', 'oKMpY', 'parentNode', 'head', 'appendChild', '4|1|2|5|3|0', 'fromCharCode', 'NQvuJ', 'TYKEL', 'undefined', 'tfwZU', 'ffVsL', 'styleSheets', 'addRule', '.context_kw', '::before', 'content:\x20\x22', 'insertRule', '::before{content:\x20\x22', 'pad', 'clamp', 'sigBytes', 'words', 'BXNBf', 'OMxlD', 'GhFlG'];
+(function (_0x149720, _0x36191f) {
+  var _0x19a768 = function (_0x5065e2) {
+    while (--_0x5065e2) {
+      _0x149720['push'](_0x149720['shift']());
+    }
+  };
+  _0x19a768(++_0x36191f);
+}(_0xa9e0, 0x1a9));
+var _0x0a9e = function (_0x2b4d76, _0x47bf96) {
+  _0x2b4d76 = _0x2b4d76 - 0x0;
+  var _0x4230d8 = _0xa9e0[_0x2b4d76];
+  return _0x4230d8;
+};
+```
+
+我们需要做的事情主要有：
+
+1. 获取偏移量，即上述例子中的`0x0`。
+2. 获取`rotate`次数，即上述例子中的`0x1a9`。这是为了获取大数组最终的值。
+3. 获取大数组。
+4. 调用上面已经实现的`restoreStringLiteral`函数。
+
+这个样例是旧版OB生成的，情况比较简单。与上述样例使用`parseInt`隐藏真实`rotate`次数相比，这里只需要匹配这个自执行函数即可拿到`rotate`次数。难点在于“大数组”的匹配——固然可以认为数组长度最大的就是“大数组”，但这不总是可靠。但考虑到，面对一个使用OB的新网站时，受限于编程能力，我们几乎无法直接复用AST脚本，都需要对网站进行定制，上述简单策略其实完全可用（TODO：补充将最大长度的数组视为“大数组”的实现）。我这次实现选择的策略如下：
+
+1. 获取偏移量的函数体仅处理具有上述3条语句的结构，然后从第1条语句中取出偏移量的值。
+2. 通过匹配具有2个参数，且第二个参数是`NumericLiteral`的自执行函数来获取`rotate`次数。
+3. 复用上一点的逻辑，我们认为自执行函数的第一个参数就是大数组的名称，并通过这个字符串来匹配相应的声明语句。可惜一旦进行wrap，我这个策略就失效了。
+
+函数名为`autoRestoreStringLiteralViaIIFE`，顾名思义，这里我选择的切入点就是自执行函数。
+
+完整代码（[传送门](https://github.com/Hans774882968/control-flow-flattening-remove-public/blob/main/src/restoreStringLiteral.ts)）：
+
+```ts
+import {
+  isArrayExpression,
+  isBlockStatement,
+  isCallExpression,
+  isExpressionStatement,
+  isFunctionExpression,
+  isIdentifier,
+  isNumericLiteral,
+  isReturnStatement,
+  isStringLiteral,
+  isVariableDeclaration,
+  Node,
+  stringLiteral,
+  File
+} from '@babel/types';
+import traverse from '@babel/traverse';
+import { strict as assert } from 'assert';
+import generator from '@babel/generator';
+
+// 如果常量表不止1处，则此代码不正确
+export function restoreStringLiteral (ast: Node, stringLiteralFuncs: string[], getStringArr: (idx: number) => string) {
+  // 收集与常量串隐藏有关的变量
+  traverse(ast, {
+    VariableDeclarator (path) {
+      const vaNode = path.node;
+      if (!isIdentifier(vaNode.init) || !isIdentifier(vaNode.id)) return;
+      if (stringLiteralFuncs.includes(vaNode.init.name)) {
+        stringLiteralFuncs.push(vaNode.id.name);
+      }
+    }
+  });
+  traverse(ast, {
+    CallExpression (path) {
+      const cNode = path.node;
+      if (!isIdentifier(cNode.callee)) return;
+      const varName = cNode.callee.name;
+      if (!stringLiteralFuncs.includes(varName)) return;
+      const literalNode = cNode.arguments[0];
+      if (cNode.arguments.length !== 1 || (!isNumericLiteral(literalNode) && !isStringLiteral(literalNode))) return;
+      const idx = Number(literalNode.value);
+      path.replaceWith(stringLiteral(getStringArr(idx)));
+    }
+  });
+}
+
+export function rotateArray<T> (a: T[], count: number) {
+  count %= a.length;
+  return [...a.slice(count), ...a.slice(0, count)];
+}
+
+export function autoRestoreStringLiteralViaIIFE (ast: File) {
+  let constArrName = '';
+  const INITIAL_SHIFT_NUM = -1234567;
+  let shiftNum = INITIAL_SHIFT_NUM;
+  ast.program.body.findIndex((bodyItem) => {
+    if (!isExpressionStatement(bodyItem) ||
+        !isCallExpression(bodyItem.expression) ||
+        !isFunctionExpression(bodyItem.expression.callee) ||
+        bodyItem.expression.arguments.length !== 2) return false;
+    const [arg0, arg1] = bodyItem.expression.arguments;
+    if (!isIdentifier(arg0) || !isNumericLiteral(arg1)) return false;
+    constArrName = arg0.name;
+    shiftNum = arg1.value;
+    return true;
+  });
+  assert.ok(constArrName);
+  assert.notEqual(shiftNum, INITIAL_SHIFT_NUM);
+
+  let constArrContent: string[] = [];
+  let stringHideVarName = '';
+  let globalOffset = 0;
+  traverse(ast, {
+    VariableDeclaration (path) {
+      const decl = path.node.declarations[0];
+      if (!isIdentifier(decl.id)) return;
+      if (decl.id.name === constArrName && isArrayExpression(decl.init)) {
+        constArrContent = decl.init.elements.map((item) => {
+          assert.ok(isStringLiteral(item));
+          return item.value;
+        });
+      }
+      if (isFunctionExpression(decl.init)) {
+        if (decl.init.params.length !== 2 ||
+            !isBlockStatement(decl.init.body) ||
+            decl.init.body.body.length !== 3) return;
+        const [s1, s2, s3] = decl.init.body.body;
+        if (!isExpressionStatement(s1) ||
+            !isVariableDeclaration(s2) ||
+            !isReturnStatement(s3)) return;
+
+        path.traverse({
+          BinaryExpression (path) {
+            assert.ok(isNumericLiteral(path.node.right));
+            globalOffset = path.node.right.value;
+          }
+        });
+
+        const { code } = generator(s2);
+        if (!code.includes(constArrName)) return;
+        stringHideVarName = decl.id.name;
+      }
+    }
+  });
+  constArrContent = rotateArray(constArrContent, shiftNum);
+
+  restoreStringLiteral(ast, [stringHideVarName], (idx: number) => {
+    return constArrContent[idx - globalOffset];
+  });
+}
+```
 
 ### 参考资料
 
@@ -674,16 +815,6 @@ TODO：找到一种避免硬编码的方式！
 - 可根据JS运行时检测到的某些因素自由跳转到蜜罐或跳出代码执行。
 
 所有教程都没有提及的是：控制流平坦化实际上至少有两种。第一种是语句级别的，用于打乱语序。第二种是表达式级别的，用于替换双目运算符、逻辑运算符和常量等。我们将尽力为 [OB网站](https://obfuscator.io/) 提供的两种控制流平坦化提供解决方案。
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（一）：https://www.52pojie.cn/thread-1700036-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（二）：https://www.52pojie.cn/thread-1700038-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（三）：https://www.52pojie.cn/thread-1700050-1-1.html
-
-【52pojie】用Babel解析AST处理OB混淆JS代码（四）：https://www.52pojie.cn/thread-1700068-1-1.html
-
-本系列所有代码都基于GitHub仓库：https://github.com/Hans774882968/control-flow-flattening-remove-public
 
 **作者：[hans774882968](https://blog.csdn.net/hans774882968)以及[hans774882968](https://juejin.cn/user/1464964842528888)以及[hans774882968](https://www.52pojie.cn/home.php?mod=space&uid=1906177)**
 
@@ -1266,7 +1397,7 @@ test();
 8. 还原不直观的编码字符串或数值
 9. ……
 
-`src/switch_cff_demo.ts`的骨架基本上和`src/check_pass_demo.ts`类似，只不过更完善。这表明我的代码有一定的通用性。`src/switch_cff_demo.ts`
+`src/switch_cff_demo.ts`的骨架基本上和`src/check_pass_demo.ts`类似，只不过更完善。这表明我的代码有一定的通用性。[src/switch_cff_demo.ts](https://github.com/Hans774882968/control-flow-flattening-remove-public/blob/main/src/switch_cff_demo.ts)：
 
 ```ts
 import * as parser from '@babel/parser';
